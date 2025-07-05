@@ -1,0 +1,5 @@
+model_name: "roberta-large"
+target_modules: ["query", "value"]
+modules_to_save: ['classifier']
+
+max_seq_length: 256 # roberta-large max length in Laplace paper

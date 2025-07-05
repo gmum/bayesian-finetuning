@@ -1,0 +1,8 @@
+model_name: meta-llama/Llama-2-7b-hf
+target_modules: ["v_proj", "q_proj"]
+modules_to_save: ["classifier"]
+
+max_seq_length: 300 # llama-2-7b-hf max length in Laplace paper
+
+batch_size: 4 # 8 for llama
+eval_batch_size: 2 # 2 for llama  

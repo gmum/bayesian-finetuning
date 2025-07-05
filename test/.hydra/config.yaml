@@ -1,0 +1,71 @@
+model:
+  batch_size: 4
+  eval_batch_size: 2
+  model_name: meta-llama/Llama-2-7b-hf
+  target_modules:
+  - v_proj
+  - q_proj
+  modules_to_save:
+  - classifier
+  max_seq_length: 300
+experiment:
+  seed: 0
+  use_loraxs: true
+  do_laplace: true
+  skip_training: true
+  val_split_size: 0.2
+  gradient_accumulation_steps: 1
+  task: mrpc
+  subtask: ''
+  ood_task: ''
+  ood_subtask: ''
+  ood_batch_size: 16
+  learning_rate: 0.001
+  cls_learning_rate: 0.005
+  num_epochs: 5
+  set_fraction: 1.0
+  weight_decay: 0
+  scheduler: linear
+  warmup_length: 0.06
+  num_lr_cycles: 0.5
+  eval_upon_save: false
+  wandb_entity: loquacious
+  wandb_project: bayes-llm
+  wandb_group: default
+  wandb_mode: online
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.0
+  train_biases: none
+  save_folder: /shared/results/z1192950/new_laplace
+  save_path: ./should_not_be_saving_here
+  exp_name: ''
+  overwrite: true
+  data_path: ./need_folder_specification
+  model_path: ./need_folder_specification
+  wandb_path: /home/z1192950/.cache/wandb
+  mnli_model_path: ./model_checkpoints/MNLI
+  offline: false
+evaluation:
+  seed: 10
+  eval_method: swag
+  eval_model_path: NONE
+  num_samples: 1
+  swag_sample_scale: 1.0
+  only_ood: false
+method:
+  method_name: swag
+  swag_start: 100
+  force_save: -1
+  modules_to_swag: lora_only
+  swag_scheduler: linear
+  swag_learning_rate: 0.001
+  swag_anneal_epochs: 5
+  swag_max_num_models: 5
+  swag_cov_mat: true
+  swag_c_epochs: 1
+  swag_sample_scale: 2.0
+  swag_samples: 15
+  swag_anneal_strategy: linear
+  swag_start_with_lowest_loss: false
+  swag_save_base_model: false
