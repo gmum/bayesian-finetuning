@@ -113,7 +113,7 @@ hydra:
     - hydra.mode=RUN
     task:
     - model=llama_7b_hf
-    - experiment.task=mrpc
+    - experiment.task=obqa
     - method.force_save=-1
     - experiment.learning_rate=1e-3
     - experiment.cls_learning_rate=5e-3
@@ -121,12 +121,12 @@ hydra:
     - experiment.use_loraxs=True
     - experiment.lora_r=8
     - experiment.seed=0
-    - experiment.skip_training=True
+    - experiment.skip_training=False
     - experiment.overwrite=True
   job:
     name: launch_exp_hydra
     chdir: null
-    override_dirname: experiment.cls_learning_rate=5e-3,experiment.learning_rate=1e-3,experiment.lora_r=8,experiment.num_epochs=5,experiment.overwrite=True,experiment.seed=0,experiment.skip_training=True,experiment.task=mrpc,experiment.use_loraxs=True,method.force_save=-1,model=llama_7b_hf
+    override_dirname: experiment.cls_learning_rate=5e-3,experiment.learning_rate=1e-3,experiment.lora_r=8,experiment.num_epochs=5,experiment.overwrite=True,experiment.seed=0,experiment.skip_training=False,experiment.task=obqa,experiment.use_loraxs=True,method.force_save=-1,model=llama_7b_hf
     id: ???
     num: ???
     config_name: config
@@ -140,18 +140,18 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /home/z1192950/b-lora-xs
+    cwd: /net/home/plgrid/plgloquacious/bay_loraxs
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /home/z1192950/b-lora-xs/conf
+    - path: /net/home/plgrid/plgloquacious/bay_loraxs/conf
       schema: file
       provider: main
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /home/z1192950/b-lora-xs/test
+    output_dir: /net/home/plgrid/plgloquacious/bay_loraxs/test
     choices:
       method: swag
       model: llama_7b_hf

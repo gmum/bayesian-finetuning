@@ -17,7 +17,7 @@ TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
     "deberta-v2": ["query_proj", "value_proj"],
     "deberta": ["in_proj"],
     "layoutlm": ["query", "value"],
-    "llama": ["q_proj", "v_proj"],
+    "llama": ["q_proj", "v_proj", "o_proj", "down_proj"],
     "chatglm": ["query_key_value"],
     "gpt_bigcode": ["c_attn"],
     "mpt": ["Wqkv"],

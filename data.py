@@ -642,7 +642,7 @@ def load_mcqa_data(
 
     if causal_lm:
         collate_fn = DataCollatorWithPadding(
-            tokenizer, pad_to_multiple_of=(8 if accelerator.use_fp16 else None)
+            tokenizer, pad_to_multiple_of=(8 if accelerator.mixed_precision == "fp16" else None)
         )
     else:
         collate_fn = DataCollatorForMultipleChoice(tokenizer=tokenizer, max_length=config.model.max_seq_length)

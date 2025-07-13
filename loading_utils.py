@@ -1,6 +1,6 @@
 import os
 from safetensors import safe_open
-from peft import PeftModel, PeftMixedModel
+from peft import PeftModel
 
 from peft import (
     get_peft_config,
@@ -68,7 +68,7 @@ def get_output_dir_loraxs(data_args, model_args, training_args):
     
     return output_dir
 
-def load_loraxs_weights(model: PeftModel | PeftMixedModel, checkpoint_dir:str, load_classifier: bool) -> None:
+def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: bool) -> None:
     """
     Loads adapter weights from a given checkpoint directory into the model.
 
@@ -120,6 +120,7 @@ def load_loraxs_weights(model: PeftModel | PeftMixedModel, checkpoint_dir:str, l
     model_state_dict = model.state_dict()
     # print(f"Keys in model, but not in checkpoint: {set(model_state_dict.keys()) - set(renamed_state_dict.keys())}")
     print(f"Keys in checkpoint, but not in model: {set(renamed_state_dict.keys()) - set(model_state_dict.keys())}")
+    print(f"Classifier keys in model: {[k for k in model_state_dict.keys() if 'classifier' in k]}")
 
     model.load_state_dict(renamed_state_dict, strict=False)
 

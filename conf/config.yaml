@@ -39,7 +39,7 @@ experiment:
   wandb_entity: "loquacious"
   wandb_project: "bayes-llm"
   wandb_group: "default"
-  wandb_mode: "online"
+  wandb_mode: "offline" # "online"
 
   # lora hyperparams
   lora_r: 8
@@ -47,14 +47,14 @@ experiment:
   lora_dropout: 0.0
   train_biases: "none"
 
-  save_folder: "/shared/results/z1192950/new_laplace" # default save location
+  save_folder: "/net/scratch/hscra/plgrid/plgloquacious/new_laplace" # default save location
   save_path: "./should_not_be_saving_here" # will get replaced
   exp_name: "" # will get replaced unless it is set by the user
 
   overwrite: False
   data_path: "./need_folder_specification" # /path/to/your/data
   model_path: "./need_folder_specification" # /path/to/your/models (for offline loading)
-  wandb_path: "/home/z1192950/.cache/wandb" # /path/to/wandb
+  wandb_path: "/net/scratch/hscra/plgrid/plgloquacious/.cache/wandb" # /path/to/wandb
 
   mnli_model_path: "./model_checkpoints/MNLI" # path to pretrained LoRa-XS weights for given rank on MNLI task
   # used only for RTE and MRPC tasks

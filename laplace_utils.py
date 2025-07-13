@@ -9,7 +9,6 @@ from typing import Any, Optional
 import math
 
 from peft.peft_model import PeftModel
-import evaluate
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
