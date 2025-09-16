@@ -42,8 +42,14 @@ def run_experiment(config):
     task = config.experiment.task
 
     if config.experiment.use_loraxs:
-        config.model.target_modules.extend(
-            ["attention.output.dense", "output.dense"])
+        if config.model.model_name == "roberta-large":
+            config.model.target_modules.extend(
+                ["attention.output.dense", "output.dense"])
+        elif "meta-llama" in config.model.model_name:
+            config.model.target_modules.extend(
+                ['k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'])
+        else:
+            raise ValueError(f"Model {config.model.model_name} not supported")
 
     active_tags = [
         model_name,

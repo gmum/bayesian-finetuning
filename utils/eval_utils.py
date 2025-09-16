@@ -520,7 +520,9 @@ def compute_metrics(
             # "MI": MI.item(),
         }
         
-        metrics["comb_score"] = -metrics["acc"] + metrics["ece"] + metrics["nll"]
+        # metrics["comb_score"] = -metrics["acc"] + metrics["ece"] + metrics["nll"]
+        metrics["comb_score"] = -5 * metrics["acc"] + metrics["nll"]
+        
         metrics["comb_calib_score"] = metrics["nll"] + metrics["ece"]
         
     accelerator.wait_for_everyone()

@@ -68,7 +68,7 @@ def get_output_dir_loraxs(data_args, model_args, training_args):
     
     return output_dir
 
-def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: bool) -> None:
+def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: bool, verbose: bool = False) -> None:
     """
     Loads adapter weights from a given checkpoint directory into the model.
 
@@ -91,7 +91,8 @@ def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: b
     print(f"Loading adapter weights from {adapter_file_path}.")
     
     if not any("default_lora_latent" in k for k in model.state_dict().keys()):
-        print("Given LoRA model, initializing LoRA-XS model.")
+        if verbose:
+            print("Given LoRA model, initializing LoRA-XS model.")
         model, peft_config_dict, reconstr_config, adapter_name = create_loraxs_model(model, create_fast=True)
         
     
@@ -107,20 +108,31 @@ def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: b
         for k, v in state_dict.items()
     }
     if not load_classifier:
-        print("Not loading classifier weights.")
+        if verbose:
+            print("Not loading classifier weights.")
         renamed_state_dict = {k: v for k, v in renamed_state_dict.items() if "classifier" not in k}
     else:
         # change classifier. name to classifier.modules_to_save.default
-        print("Loading classifier weights. Renaming classifier weights to classifier.modules_to_save.default.")
-        renamed_state_dict = {
-            k.replace("classifier", "classifier.modules_to_save.default"): v
-            for k, v in renamed_state_dict.items()
-        }
+        if verbose:
+            print("Loading classifier weights. Renaming classifier weights to classifier.modules_to_save.default.")
+        if any("classifier" in k for k in renamed_state_dict.keys()):
+            renamed_state_dict = {
+                k.replace("classifier", "classifier.modules_to_save.default"): v
+                for k, v in renamed_state_dict.items()
+            }
+        elif any("lm_head" in k for k in renamed_state_dict.keys()):
+            renamed_state_dict = {
+                k.replace("lm_head", "lm_head.modules_to_save.default"): v
+                for k, v in renamed_state_dict.items()
+            }
+        else:
+            print(f"No classifier or lm_head found in the checkpoint. Keys in renamed_state_dict: {renamed_state_dict.keys()}")
     # print what keys differ between the model and the checkpoint
     model_state_dict = model.state_dict()
-    # print(f"Keys in model, but not in checkpoint: {set(model_state_dict.keys()) - set(renamed_state_dict.keys())}")
-    print(f"Keys in checkpoint, but not in model: {set(renamed_state_dict.keys()) - set(model_state_dict.keys())}")
-    print(f"Classifier keys in model: {[k for k in model_state_dict.keys() if 'classifier' in k]}")
+    if verbose:
+        print(f"Keys in checkpoint, but not in model: {set(renamed_state_dict.keys()) - set(model_state_dict.keys())}")
+        print(f"Classifier keys in model: {[k for k in model_state_dict.keys() if 'classifier' in k]}")
+        print(f"Lm head keys in model: {[k for k in model_state_dict.keys() if 'lm_head' in k]}")
 
     model.load_state_dict(renamed_state_dict, strict=False)
 

@@ -120,9 +120,9 @@ def get_linear_rec_svd(
     return reconstructed_matrix, reduced_matrix, svd.components_
 
 
-def get_replacement_module(weight, module_name, type, writer, reconstruct_config):
-    cfg = reconstruct_config[type]
-    if type == "svd":
+def get_replacement_module(weight, module_name, reconstruction_type, writer, reconstruct_config):
+    cfg = reconstruct_config[reconstruction_type]
+    if reconstruction_type == "svd":
         reconstructed_matrix, enc, dec = get_linear_rec_svd(
             weight.cpu().detach().numpy(),
             cfg["rank"],
@@ -132,7 +132,7 @@ def get_replacement_module(weight, module_name, type, writer, reconstruct_config
         final_enc = torch.tensor(enc, dtype=weight.dtype, device=weight.device)
         final_dec = torch.tensor(dec, dtype=weight.dtype, device=weight.device)
     else:
-        raise NotImplementedError(f"{type} is currently not supported.")
+        raise NotImplementedError(f"{reconstruction_type} is currently not supported.")
     return final_enc, final_dec
 
 
@@ -217,7 +217,7 @@ def find_and_initialize(
                     get_replacement_module(
                         weight=target.weight.T,
                         module_name=key,
-                        type=reconstr_type,
+                        reconstruction_type=reconstr_type,
                         writer=writer,
                         reconstruct_config=reconstruct_config,
                     )

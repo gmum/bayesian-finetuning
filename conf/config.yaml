@@ -25,6 +25,9 @@ experiment:
   ood_batch_size: 16
   learning_rate: 1e-3
   cls_learning_rate: 1e-3 # classifier learning rate
+  # weight decays
+  lora_weight_decay: 0.01
+  classifier_weight_decay: 0.01
 
   num_epochs: 15
   set_fraction: 1.0 # fraction of training dataset used for learning (value between 0 and 1, inclusively)
@@ -47,6 +50,7 @@ experiment:
   lora_dropout: 0.0
   train_biases: "none"
 
+  exp_group_name: "linearization" # "new_exp"
   save_folder: "/net/scratch/hscra/plgrid/plgloquacious/new_laplace" # default save location
   save_path: "./should_not_be_saving_here" # will get replaced
   exp_name: "" # will get replaced unless it is set by the user

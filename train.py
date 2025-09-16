@@ -16,7 +16,7 @@ import json
 import accelerate
 from utils.eval_utils import evaluate_task, compute_metrics, ood_metrics_entropy
 
-from laplace_utils import evaluate_laplace_params, get_laplace_params, checkpoints_to_fit, LaplaceWeights
+from laplace_utils import evaluate_laplace_params, get_laplace_params, checkpoints_to_fit, LaplaceWeights, tensor_metrics_to_float
 from laplace.utils.enums import Likelihood, SubsetOfWeights, HessianStructure, PredType, LinkApprox, TuningMethod, PriorStructure
 
 from transformers import (
@@ -198,16 +198,20 @@ def train_swag(
                     i[1] for i in model.named_parameters() if "classifier" in i[0]
                 ],
                 "lr": cls_lr,
+                "weight_decay": config.experiment.classifier_weight_decay,
             },
             {
                 "params": [
                     i[1] for i in model.named_parameters() if "classifier" not in i[0]
                 ],
                 "lr": config.experiment.learning_rate,
+                "weight_decay": config.experiment.lora_weight_decay,
             },
         ]
     )
-    print("Classifier learning rate: ", cls_lr)
+    # print weight decays of optimizer groups for sanity check
+    for i, group in enumerate(optimizer.param_groups):
+        print(f"Group {i}, lr: {group['lr']}, wd: {group['weight_decay']}")
 
     loss_fn = CrossEntropyLoss()
 
@@ -429,6 +433,11 @@ def train_swag(
             accelerator=accelerator,
             causal_lm=causal_lm,
         )
+        
+        wandb_log_metrics = tensor_metrics_to_float(eval_metrics)
+        wandb_log_metrics = {f"eval_{k}": v for k, v in wandb_log_metrics.items()}
+        wandb.log(wandb_log_metrics)
+        
 
         counter += 1
         
@@ -456,7 +465,7 @@ def train_swag(
                         previous_epoch = metrics_to_save[metric_name]["saved_epoch"]
                         metrics_to_save[metric_name]["saved_epoch"] = epoch
                         
-                        save_path_metric = os.path.join(save_path, get_checkpoint_name(metric_name, global_step))
+                        save_path_metric = os.path.join(save_path, get_checkpoint_name(metric_name, epoch))
                         model.save_pretrained(save_path_metric)
                         print(f"saved base model to path {save_path_metric}")
                         print(f"Saving (highest metric value) base model checkpoint {metric_name}: {cur_metric_val} at epoch {epoch}")
@@ -569,20 +578,39 @@ def train_swag(
         #     (PriorStructure.LAYERWISE, {"n_steps": 2000,"lr": 0.007}),
         #     (PriorStructure.LAYERWISE, {"n_steps": 2000,"lr": 0.02})
         # ]
-        prior_params_list = [
-            (PriorStructure.SCALAR, {"n_steps": 1000, "lr": 0.1}),
+        
+        # link_approx_list = [LinkApprox.MC, LinkApprox.PROBIT]
+        link_approx_list = [LinkApprox.MC]
+        
+        prediction_kwargs_list = [
+            (PredType.GLM, {"n_samples": 100000, "joint": True}),
+            (PredType.NN, {"n_samples": 100, "joint": True}),
         ]
         
+        prior_params_list = [
+            (PriorStructure.SCALAR, {"n_steps": 1000, "lr": 0.1}),
+            (PriorStructure.SCALAR, {"n_steps": 2000, "lr": 0.2}),
+            # (PriorStructure.SCALAR, {"n_steps": 4000, "lr": 0.2}),
+            # (PriorStructure.SCALAR, {"n_steps": 8000, "lr": 0.1}),
+            # (PriorStructure.LAYERWISE, {"n_steps": 2000, "lr": 0.2}),
+            # (PriorStructure.LAYERWISE, {"n_steps": 8000, "lr": 0.05}),
+            #  (PriorStructure.LAYERWISE, {"n_steps": 8000, "lr": 0.2}),
+        ]
+        
+        
         for laplace_weights in [LaplaceWeights.LORAXS]:
-            for link_approx in [LinkApprox.MC, LinkApprox.PROBIT]:
-                for prior_structure, prior_kwargs in prior_params_list:
-                        laplace_params_list.append(get_laplace_params(laplace_weights=laplace_weights, 
-                                                                    link_approx=link_approx, 
-                                                                    prior_structure=prior_structure,
-                                                                    prior_kwargs=prior_kwargs))
+            for link_approx in link_approx_list:
+                for pred_type, pred_kwargs in prediction_kwargs_list:
+                    for prior_structure, prior_kwargs in prior_params_list:
+                            laplace_params_list.append(get_laplace_params(laplace_weights=laplace_weights, 
+                                                                        link_approx=link_approx, 
+                                                                        prior_structure=prior_structure,
+                                                                        prior_kwargs=prior_kwargs,
+                                                                        pred_type=pred_type,
+                                                                        prediction_kwargs=pred_kwargs))
         
         checkpoints_list = checkpoints_to_fit(output_dir=save_path, use_metrics=True,
-                                          checkpoint_metrics=["eval_comb_score", "eval_acc", "eval_nll"])
+                                          checkpoint_metrics=["eval_acc"]) # "eval_comb_score", "eval_nll"
 
         
         total_laplace_metrics = {}
@@ -607,6 +635,15 @@ def train_swag(
             causal_lm=causal_lm
         ))
         
+    print(f"Total laplace metrics: {total_laplace_metrics}")
+    
+    laplace_metrics_df = pd.DataFrame(columns=["name", "eval_comb_score", "eval_comb_calib_score", "eval_acc", "eval_nll", "eval_ece", "nl_marglik"])
+    new_entries_df = pd.DataFrame.from_dict(total_laplace_metrics, orient="index").reset_index()
+    laplace_metrics_df = pd.concat([laplace_metrics_df, new_entries_df], ignore_index=False)
+    
+    laplace_metrics_df.to_csv(os.path.join(save_path, "new_laplace_metrics.csv"))
+    wandb.log({"laplace/metrics_df": wandb.Table(dataframe=laplace_metrics_df)})
+    print("Successfully finished.")
     
 
     if config.method.swag_save_base_model:

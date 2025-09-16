@@ -42,14 +42,25 @@ def tensor_metrics_to_float(metrics: dict) -> dict:
 
 
 class LaplaceWrapper(nn.Module):
-  def __init__(self, peft_model: PeftModel):
-      super().__init__()
-      self.model = peft_model
-  
-  def forward(self, data: MutableMapping) -> torch.Tensor:
-      # device = next(self.model.parameters()).device
-      return self.model(**data).logits
-  
+    def __init__(self, peft_model: PeftModel):
+        super().__init__()
+        self.model = peft_model
+
+    def forward(self, data: MutableMapping) -> torch.Tensor:
+        # Remove labels for inference
+        inference_data = {k: v for k, v in data.items() if k != 'labels'}
+        output = self.model(**inference_data)
+        logits = output.logits
+        # print(f"LaplaceWrapper logits shape: {logits.shape}")
+        # If output is 3D (causal LM: [batch, seq_len, vocab] or [batch, seq_len, num_choices]),
+        # take the last token's logits and, if needed, select only the answer tokens
+        if logits.dim() == 3:
+            # [batch, seq_len, vocab/num_choices] -> [batch, num_choices] (last token)
+            logits = logits[:, -1, :]
+        # If output is already [batch, num_choices], do nothing
+        # print(f"LaplaceWrapper final logits.shape: {logits.shape}")
+        return logits.to(torch.float32)
+
 class LaplaceWeights(str, Enum):
     """Valid options for `subset_of_weights`."""
 
@@ -69,7 +80,7 @@ class LaplaceWeights(str, Enum):
     """Laplace for all weights(i.e. loraxs and classifier)"""
     
     @staticmethod
-    def update_model(model: nn.Module, laplace_weights: 'LaplaceWeights', verbose: bool = True) -> None:
+    def update_model(model: nn.Module, laplace_weights: 'LaplaceWeights', verbose: bool = False) -> None:
         print(f"Setting LaplaceWeights: {laplace_weights}")
         model.requires_grad_(False)
         if laplace_weights == LaplaceWeights.LORAXS:
@@ -225,8 +236,10 @@ def evaluate_linearized_prediction(
         raise ValueError("Only classification likelihood is supported for this function (evaluate_linearized_prediction)")
     
     # print gpu memory usage
-    print(f"GPU memory allocated: {torch.cuda.memory_allocated(device=device) / 1024**3:.2f} GB")
-    print(f"GPU memory reserved: {torch.cuda.memory_reserved(device=device) / 1024**3:.2f} GB")
+    verbose = False
+    if verbose:
+      print(f"GPU memory allocated: {torch.cuda.memory_allocated(device=device) / 1024**3:.2f} GB")
+      print(f"GPU memory reserved: {torch.cuda.memory_reserved(device=device) / 1024**3:.2f} GB")
     # total_loss = 0
     total_samples = 0
     
@@ -307,6 +320,7 @@ def evaluate_laplace(model,
                      num_labels,
                      laplace_save_path=None,
                      laplace_params: LaplaceParams,
+                     test_precision_importance: bool = False,
                      **kwargs):
     
   laplace_params.update_model(model)
@@ -338,6 +352,17 @@ def evaluate_laplace(model,
     val_metrics = evaluate_linearized_prediction(val_loader, "eval_", la, device, laplace_params.pred_type, laplace_params.link_approx, num_labels, prediction_kwargs=laplace_params.prediction_kwargs)
     total_metrics.update(val_metrics)
     
+  if test_precision_importance:
+    # Run evaluation for precision equal 100 * prior precision and 1 / 100 * prior precision
+    real_prior_precision = la.prior_precision.clone()
+    with torch.no_grad():
+      # 100 * prior precision
+      la.prior_precision.mul_(10.0)
+      print("Prior precision after multiplying by 10: ", la.prior_precision)
+      prior_mult_10_metrics = evaluate_linearized_prediction(val_loader, "mult_10_", la, device, laplace_params.pred_type, laplace_params.link_approx, num_labels, prediction_kwargs=laplace_params.prediction_kwargs)
+    
+      la.prior_precision.copy_(real_prior_precision)
+    
   if test_loader:
     test_metrics = evaluate_linearized_prediction(test_loader, "test_", la, device, laplace_params.pred_type, laplace_params.link_approx, num_labels, prediction_kwargs=laplace_params.prediction_kwargs)
     total_metrics.update(test_metrics)
@@ -360,13 +385,14 @@ def get_laplace_params(*,
                        prior_structure: PriorStructure = PriorStructure.SCALAR,
                        prior_kwargs: dict = {"n_steps" : 1000, "lr" : 0.1},
                        prediction_kwargs: dict = {"n_samples" : 100000, "joint": True},
+                       pred_type: PredType = PredType.GLM,
                        backend=CurvlinopsGGN) -> LaplaceParams:
     laplace_params = LaplaceParams(
       name="",
       laplace_weights=laplace_weights,
       hessian_structure=hessian_structure,
       likelihood=likelihood,
-      pred_type=PredType.GLM,
+      pred_type=pred_type,  
       link_approx=link_approx,
       prior_optim_method=TuningMethod.MARGLIK,
       prior_structure=prior_structure,
@@ -444,6 +470,7 @@ def evaluate_laplace_params(
             causal_lm=causal_lm,
         )
         base_metrics = tensor_metrics_to_float(base_metrics)
+        base_metrics = {f"eval_{k}": v for k, v in base_metrics.items()}
         total_laplace_metrics[base_name] = base_metrics
         total_laplace_metrics[base_name]["nl_marglik"] = 0
         total_laplace_metrics[base_name]["name"] = f"{prefix}_base"
