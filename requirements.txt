@@ -1,0 +1,15 @@
+torch
+datasets
+transformers
+tabulate
+wandb
+peft
+scikit-learn
+matplotlib
+torchmetrics
+opt_einsum
+git+https://github.com/kazukiosawa/asdl
+backpack-for-pytorch
+curvlinops-for-pytorch
+laplace
+
