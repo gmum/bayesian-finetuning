@@ -178,7 +178,7 @@ def get_best_metrics_checkpoints(model_dirs, checkpoint_metrics: List[str]):
 def checkpoints_to_fit(output_dir, 
                        use_metrics:bool,
                        checkpoint_metrics: List[str]=None, 
-                       use_first_last:bool = True, 
+                       use_first_last:bool = False, 
                        peft_method="lora_xs"):
     """
     Get the checkpoints to fit Laplace on.
@@ -442,6 +442,7 @@ def evaluate_laplace_params(
     test_run=False,
     accelerator=None,
     causal_lm=False,
+    wandb_run=None,
 ):
     if checkpoint_full_path is not None:
         load_loraxs_weights(model, checkpoint_full_path, load_classifier=True)
@@ -471,6 +472,12 @@ def evaluate_laplace_params(
         )
         base_metrics = tensor_metrics_to_float(base_metrics)
         base_metrics = {f"eval_{k}": v for k, v in base_metrics.items()}
+        
+        if wandb_run is not None and prefix.startswith("checkpoint"):
+            wandb_run.log({f"{prefix}/base_{key}": value for key, value in base_metrics.items()})
+            
+            wandb_run.log({f"laplace/base_{key}": value for key, value in base_metrics.items()})
+        
         total_laplace_metrics[base_name] = base_metrics
         total_laplace_metrics[base_name]["nl_marglik"] = 0
         total_laplace_metrics[base_name]["name"] = f"{prefix}_base"
@@ -501,5 +508,10 @@ def evaluate_laplace_params(
         if json_metrics_full_path is not None:
             with open(json_metrics_full_path, "w") as f:
                 json.dump(total_laplace_metrics, f)
+        
+        if wandb_run is not None and prefix.startswith("checkpoint"):
+            wandb_run.log({f"{prefix}/{key}": value for key, value in total_laplace_metrics[full_name].items()})
+            
+            wandb_run.log({f"laplace/{key}": value for key, value in total_laplace_metrics[full_name].items()})
 
     return total_laplace_metrics

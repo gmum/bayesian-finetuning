@@ -57,6 +57,9 @@ def run_experiment(config):
         "loraxs" if config.experiment.use_loraxs else "lora",
     ]
 
+    # Create a descriptive run name
+    run_name = f"{model_name}_{task}_{'loraxs' if config.experiment.use_loraxs else 'lora'}_seed{config.experiment.seed}_lr{config.experiment.learning_rate}_cls_lr{config.experiment.cls_learning_rate}_ep{config.experiment.num_epochs}"
+    
     accelerator.init_trackers(
         project_name=config.experiment.wandb_project,
         init_kwargs={
@@ -64,6 +67,7 @@ def run_experiment(config):
                 "entity": config.experiment.wandb_entity,
                 "group": wandb_group,
                 "tags": active_tags,
+                "name": run_name,
             }
         },
     )
@@ -158,6 +162,8 @@ def run_experiment(config):
         reconstr_config[reconstr_type]["rank"] = peft_config_dict[adapter_name].r
         print("XS-RANK ", peft_config_dict[adapter_name].r)
 
+        print("LORA-XS MODE ", config.experiment.loraxs_mode)
+
         find_and_initialize(
             model,
             peft_config_dict,
@@ -165,6 +171,10 @@ def run_experiment(config):
             reconstr_type=reconstr_type,
             reconstruct_config=reconstr_config,
             writer=None,
+            unfreeze_A=config.experiment.unfreeze_A,
+            unfreeze_B=config.experiment.unfreeze_B,
+            loraxs_sigma=config.experiment.loraxs_sigma,
+            loraxs_mode=config.experiment.loraxs_mode,
         )
         model.print_trainable_parameters()
 

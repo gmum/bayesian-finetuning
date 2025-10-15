@@ -136,13 +136,25 @@ def get_replacement_module(weight, module_name, reconstruction_type, writer, rec
     return final_enc, final_dec
 
 
-def init_module_weights(target_module: torch.nn.Linear, sigma: float):
+def init_module_weights(target_module: torch.nn.Linear, sigma: float, mode = "normal"):
     # Initialize weights with Gaussian distribution
-    torch.nn.init.normal_(target_module.weight, mean=0, std=sigma)
-    if hasattr(target_module, "bias"):
-        # Set bias to zeros
-        if target_module.bias is not None:
-            torch.nn.init.zeros_(target_module.bias)
+    if mode == "normal":
+        torch.nn.init.normal_(target_module.weight, mean=0, std=sigma)
+        if hasattr(target_module, "bias"):
+            # Set bias to zeros
+            if target_module.bias is not None:
+                torch.nn.init.zeros_(target_module.bias)
+    elif mode == "diagonal":
+        torch.nn.init.zeros_(target_module.weight)
+        torch.nn.init.normal_(torch.diagonal(target_module.weight), mean=0, std=sigma)
+        if hasattr(target_module, "bias"):
+            # Set bias to zeros
+            if target_module.bias is not None:
+                torch.nn.init.zeros_(target_module.bias)
+    else:
+        raise NotImplementedError(f"{mode} is currently not supported.")
+        
+        
 
 
 def replace_module_weights(target_module, new_weight):
@@ -178,12 +190,13 @@ def kaiming_uniform_init(matrix: torch.tensor):
 
 
 def find_and_initialize(
-    model, peft_config, adapter_name, reconstr_type, reconstruct_config, writer
+    model, peft_config, adapter_name, reconstr_type, reconstruct_config, writer, unfreeze_A = False, unfreeze_B = False, loraxs_sigma = 0.00001, loraxs_mode = "normal"
 ):
     """
     :param adapter_name: options: 'default'
     :param reconstr_type: options: 'svd'
     """
+    print(f"Unfreeze_A = {unfreeze_A}, Unfreeze_B = {unfreeze_B}, Sigma = {loraxs_sigma}, Mode = {loraxs_mode}")
     half_init_dec = reconstruct_config["half_init_dec"]
     replacement_module_random_init = reconstruct_config[
         "replacement_module_random_init"
@@ -251,17 +264,17 @@ def find_and_initialize(
                             lora_config.r, lora_config.r, bias=False
                         )
                         init_module_weights(
-                            target.default_lora_latent_mapping, sigma=0.00001
+                            target.default_lora_latent_mapping, sigma=loraxs_sigma, mode=loraxs_mode
                         )
                         target.default_lora_latent_mapping.to(
                             target.lora_A.default.weight.device
                         )
 
                         target.lora_A.default.weight.requires_grad = (
-                            False  # only the r*r matrix will be tuned
+                            unfreeze_A  # only the r*r matrix will be tuned
                         )
                         target.lora_B.default.weight.requires_grad = (
-                            False  # only the r*r matrix will be tuned
+                            unfreeze_B  # only the r*r matrix will be tuned
                         )
 
                     else:

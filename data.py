@@ -646,6 +646,12 @@ def load_mcqa_data(
         )
     else:
         collate_fn = DataCollatorForMultipleChoice(tokenizer=tokenizer, max_length=config.model.max_seq_length)
+        
+    # check the number of samples in the train, validation, and test sets
+    print(f"Number of samples in the train set: {len(tokenized_dataset[train_name])}")
+    print(f"Number of samples in the validation set: {len(tokenized_dataset['validation'])}")
+    print(f"Number of samples in the test set: {len(tokenized_dataset['test'])}")
+    
     train_dataloader = DataLoader(
         tokenized_dataset[train_name],
         shuffle=True,

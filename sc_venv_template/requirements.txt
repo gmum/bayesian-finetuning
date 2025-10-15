@@ -250,7 +250,9 @@ toml==0.10.2
 tomli==2.0.1
 tomli_w==1.0.0
 tomlkit==0.11.8
-torch==2.1.2
+torch==2.5.1+cu124.post3
+torchaudio==2.4.0+cu124
+torchvision==0.20.1+cu124
 tornado==6.3.2
 tqdm==4.66.1
 traitlets==5.13.0

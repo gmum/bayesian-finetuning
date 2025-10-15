@@ -267,6 +267,9 @@ def train_swag(
         }
     }
     
+    # save config.experiment parameters
+    wandb.config.update({f"experiment/{k}": v for k, v in config.experiment.items()})
+    
     global_step = 0
 
     columns = [
@@ -453,31 +456,35 @@ def train_swag(
         if accelerator.is_main_process:
             # save LoRA model if it improves upon the best validation loss thus far
             if config.method.swag_save_base_model or config.experiment.do_laplace:
-                def get_checkpoint_name(metric_name, metric_step):
-                    return f'eval_{metric_name}-{metric_step}'
+                if epoch in [3, 4, 5, 6, 7]:
+                    checkpoint_path = os.path.join(save_path, f"checkpoint-{epoch}")
+                    model.save_pretrained(checkpoint_path)
+                    print(f"saved base model to path {checkpoint_path}")
+                # def get_checkpoint_name(metric_name, metric_step):
+                #     return f'eval_{metric_name}-{metric_step}'
                 
-                for metric_name, metric_info in metrics_to_save.items():
-                    cur_metric_val = eval_metrics[metric_name]
-                    if metric_info["best_metric_val"] is None or \
-                        (metric_info["is_greater_better"] and cur_metric_val > metric_info["best_metric_val"]) or \
-                        (not metric_info["is_greater_better"] and cur_metric_val < metric_info["best_metric_val"]):
-                        metrics_to_save[metric_name]["best_metric_val"] = cur_metric_val
-                        previous_epoch = metrics_to_save[metric_name]["saved_epoch"]
-                        metrics_to_save[metric_name]["saved_epoch"] = epoch
+                # for metric_name, metric_info in metrics_to_save.items():
+                #     cur_metric_val = eval_metrics[metric_name]
+                #     if metric_info["best_metric_val"] is None or \
+                #         (metric_info["is_greater_better"] and cur_metric_val > metric_info["best_metric_val"]) or \
+                #         (not metric_info["is_greater_better"] and cur_metric_val < metric_info["best_metric_val"]):
+                #         metrics_to_save[metric_name]["best_metric_val"] = cur_metric_val
+                #         previous_epoch = metrics_to_save[metric_name]["saved_epoch"]
+                #         metrics_to_save[metric_name]["saved_epoch"] = epoch
                         
-                        save_path_metric = os.path.join(save_path, get_checkpoint_name(metric_name, epoch))
-                        model.save_pretrained(save_path_metric)
-                        print(f"saved base model to path {save_path_metric}")
-                        print(f"Saving (highest metric value) base model checkpoint {metric_name}: {cur_metric_val} at epoch {epoch}")
-                        if previous_epoch is not None:
-                            old_metric_save_path = os.path.join(save_path, get_checkpoint_name(metric_name, previous_epoch))
-                            print(f"Removing old checkpoint {old_metric_save_path}")
-                            if os.path.exists(old_metric_save_path):
-                                print(f"Old checkpoint {old_metric_save_path} exists, removing")
-                                if os.path.isdir(old_metric_save_path):
-                                    shutil.rmtree(old_metric_save_path)
-                                else:
-                                    os.remove(old_metric_save_path)
+                #         save_path_metric = os.path.join(save_path, get_checkpoint_name(metric_name, epoch))
+                #         model.save_pretrained(save_path_metric)
+                #         print(f"saved base model to path {save_path_metric}")
+                #         print(f"Saving (highest metric value) base model checkpoint {metric_name}: {cur_metric_val} at epoch {epoch}")
+                #         if previous_epoch is not None:
+                #             old_metric_save_path = os.path.join(save_path, get_checkpoint_name(metric_name, previous_epoch))
+                #             print(f"Removing old checkpoint {old_metric_save_path}")
+                #             if os.path.exists(old_metric_save_path):
+                #                 print(f"Old checkpoint {old_metric_save_path} exists, removing")
+                #                 if os.path.isdir(old_metric_save_path):
+                #                     shutil.rmtree(old_metric_save_path)
+                #                 else:
+                #                     os.remove(old_metric_save_path)
                         
             # # save last model
             # model.save_pretrained(os.path.join(save_path, "last_model"))
@@ -584,12 +591,12 @@ def train_swag(
         
         prediction_kwargs_list = [
             (PredType.GLM, {"n_samples": 100000, "joint": True}),
-            (PredType.NN, {"n_samples": 100, "joint": True}),
+            # (PredType.NN, {"n_samples": 100, "joint": True}),
         ]
         
         prior_params_list = [
-            (PriorStructure.SCALAR, {"n_steps": 1000, "lr": 0.1}),
-            (PriorStructure.SCALAR, {"n_steps": 2000, "lr": 0.2}),
+            # (PriorStructure.SCALAR, {"n_steps": 1000, "lr": 0.1}),
+            (PriorStructure.SCALAR, {"n_steps": 2000, "lr": 0.1}),
             # (PriorStructure.SCALAR, {"n_steps": 4000, "lr": 0.2}),
             # (PriorStructure.SCALAR, {"n_steps": 8000, "lr": 0.1}),
             # (PriorStructure.LAYERWISE, {"n_steps": 2000, "lr": 0.2}),
@@ -609,8 +616,7 @@ def train_swag(
                                                                         pred_type=pred_type,
                                                                         prediction_kwargs=pred_kwargs))
         
-        checkpoints_list = checkpoints_to_fit(output_dir=save_path, use_metrics=True,
-                                          checkpoint_metrics=["eval_acc"]) # "eval_comb_score", "eval_nll"
+        checkpoints_list = checkpoints_to_fit(output_dir=save_path, use_first_last=False, use_metrics=False) # "eval_comb_score", "eval_nll", "eval_acc"
 
         
         total_laplace_metrics = {}
@@ -632,7 +638,8 @@ def train_swag(
             test_loader=None,
             json_metrics_path=save_path,
             accelerator=accelerator,
-            causal_lm=causal_lm
+            causal_lm=causal_lm,
+            wandb_run=wandb.run
         ))
         
     print(f"Total laplace metrics: {total_laplace_metrics}")

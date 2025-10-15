@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
 #SBATCH --gres=gpu:1
-#SBATCH --time=10:00:00
+#SBATCH --time=04:00:00
 #SBATCH --account=plgbloraxs-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=120G
@@ -34,6 +34,8 @@ LORA_WEIGHT_DECAY="${LORA_WEIGHT_DECAY:-0.01}"
 CLASSIFIER_WEIGHT_DECAY="${CLASSIFIER_WEIGHT_DECAY:-0.01}"
 DO_LAPLACE="${DO_LAPLACE:-True}"
 LORA_ALPHA="${LORA_ALPHA:-16}"
+UNFREEZE_A="${UNFREEZE_A:-False}"
+UNFREEZE_B="${UNFREEZE_B:-False}"
 
 # # set number of epochs depending on the dataset. If it's cola - 5, obqa or arc-e - 10
 # # If epochs wasn't set by the user, set it to the default value
@@ -57,11 +59,15 @@ echo "LORA_WEIGHT_DECAY: $LORA_WEIGHT_DECAY"
 echo "CLASSIFIER_WEIGHT_DECAY: $CLASSIFIER_WEIGHT_DECAY"
 echo "DO_LAPLACE: $DO_LAPLACE"
 echo "LORA_ALPHA: $LORA_ALPHA"
+echo "UNFREEZE_A: $UNFREEZE_A"
+echo "UNFREEZE_B: $UNFREEZE_B"
 
 ml ML-bundle/24.06a
 
-source $SCRATCH/bloraxs/bin/activate
-
+# source $SCRATCH/bloraxs/bin/activate
+source $GRANT_DIR/bloraxs/bin/activate    
+# list all the modules installed
+# pip list
 
 accelerate launch launch_exp_hydra.py \
   model=$MODEL \
@@ -79,4 +85,6 @@ accelerate launch launch_exp_hydra.py \
   experiment.overwrite=True \
   experiment.lora_dropout=$LORA_DROPOUT \
   experiment.lora_weight_decay=$LORA_WEIGHT_DECAY \
-  experiment.classifier_weight_decay=$CLASSIFIER_WEIGHT_DECAY
+  experiment.classifier_weight_decay=$CLASSIFIER_WEIGHT_DECAY \
+  experiment.unfreeze_A=$UNFREEZE_A \
+  experiment.unfreeze_B=$UNFREEZE_B
