@@ -13,6 +13,8 @@ def main(cfg: DictConfig):
     os.environ["WANDB_DIR"] = cfg.experiment.wandb_path
     dist.init_process_group(backend="nccl")
     print("Initialized")
+    
+    print(f"Running experiment with config:\n{cfg}")
     run_experiment(cfg)
 
 

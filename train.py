@@ -293,8 +293,16 @@ def train_swag(
         "time",
     ]
     print("")
-    print("-------------------------" +
-          "Start training" + "-------------------------")
+    print("-------------------------START TRAINING-------------------------")
+
+    if swag_start < num_epochs:
+        print(
+            f"SWAG start epoch {swag_start} is <= num_epochs {num_epochs}, SWAG collection will occur!"
+        )
+
+    import gc
+    for i in range(5):
+        gc.collect()
 
     learning_rates = []
     logged_values = []
@@ -548,6 +556,8 @@ def train_swag(
             )
         accelerator.wait_for_everyone()
 
+    print("-------------------------END OF TRAINING-------------------------")
+
     if accelerator.is_main_process:
         counter += 1
         accelerator.log(
@@ -571,6 +581,7 @@ def train_swag(
     
     # Post-hoc Laplace approximation on chosen checkpoints
     if config.experiment.do_laplace:
+        print("-------------------------POST-HOC LAPLACE-------------------------")
         print(f"GPU memory allocated: {torch.cuda.memory_allocated(device=accelerator.device) / 1024**3:.2f} GB")
         print(f"GPU memory reserved: {torch.cuda.memory_reserved(device=accelerator.device) / 1024**3:.2f} GB")
         print("Post-hoc Laplace approximation on chosen checkpoints")
@@ -604,7 +615,7 @@ def train_swag(
             #  (PriorStructure.LAYERWISE, {"n_steps": 8000, "lr": 0.2}),
         ]
         
-        
+        print("Constructing Laplace parameters list...")
         for laplace_weights in [LaplaceWeights.LORAXS]:
             for link_approx in link_approx_list:
                 for pred_type, pred_kwargs in prediction_kwargs_list:
@@ -616,10 +627,14 @@ def train_swag(
                                                                         pred_type=pred_type,
                                                                         prediction_kwargs=pred_kwargs))
         
+        print(f"Constructed {len(laplace_params_list)} Laplace parameter configurations.")
         checkpoints_list = checkpoints_to_fit(output_dir=save_path, use_first_last=False, use_metrics=False) # "eval_comb_score", "eval_nll", "eval_acc"
 
         
         total_laplace_metrics = {}
+
+    print(f"Evaluating Laplace parameters on checkpoints: {checkpoints_list} from save_path={save_path}")
+
     for checkpoint in checkpoints_list:
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()

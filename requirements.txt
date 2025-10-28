@@ -11,4 +11,7 @@ opt_einsum
 git+https://github.com/kazukiosawa/asdl
 backpack-for-pytorch
 curvlinops-for-pytorch
-laplace
+#laplace
+hydra-core
+wandb==0.16.1
+gpytorch<1.10

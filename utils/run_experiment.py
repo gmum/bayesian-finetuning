@@ -42,7 +42,7 @@ def run_experiment(config):
     task = config.experiment.task
 
     if config.experiment.use_loraxs:
-        if config.model.model_name == "roberta-large":
+        if config.model.model_name == "roberta-large" or config.model.model_name == "roberta-base":
             config.model.target_modules.extend(
                 ["attention.output.dense", "output.dense"])
         elif "meta-llama" in config.model.model_name:
@@ -75,6 +75,7 @@ def run_experiment(config):
     set_save_path(config, accelerator)
 
     seed = config.experiment.seed
+    print(f"Setting seed to <{seed}>")
     torch.manual_seed(seed)
     numpy.random.seed(seed)
     random.seed(seed)
