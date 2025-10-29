@@ -89,7 +89,14 @@ def run_experiment(config):
 
     ood_dataloader = None
 
+    if  config.experiment.do_laplace and config.method.method_name == "swag":
+        print("***********************WARNING************************")
+        print("Cannot use Laplace with SWAG!")
+        print("***********************WARNING************************")
+
+
     # Load data
+    print("-----------------------Preparing data------------------------")
     if task in GLUE_task_to_keys:
         tokenizer, train_dataloader, eval_dataloader, test_dataloader, num_classes = (
             load_glue_data(
@@ -114,8 +121,10 @@ def run_experiment(config):
         )
     else:
         raise Exception("Only GLUE tasks and MCQA tasks implemented")
+    print("--------------------------------------------------------------")
 
     if config.experiment.ood_task != "":
+        print("-----------------------Preparing OOD data---------------------")
         if task in GLUE_task_to_keys:
             _, _, _, ood_dataloader, _ = load_glue_data(
                 config,
@@ -138,19 +147,21 @@ def run_experiment(config):
             )
         else:
             raise Exception("Only GLUE tasks and MCQA tasks implemented")
+        print("--------------------------------------------------------------")
 
     peft_config = get_peft_config(config, accelerator=accelerator)
 
     accelerator.print(f"Method: {config.method.method_name}")
 
-    # create peft model
+    print("-----------------------Creating PEFT model-----------------------")
     print("RANK ", peft_config.r)
     model = create_peft_model(
         config, peft_config, num_classes=num_classes, tokenizer=tokenizer
     )
+    print("-----------------------------------------------------------------")
 
     if config.experiment.use_loraxs:
-        print("Creating LORA-XS")
+        print("-----------------------Creating LORA-XS-----------------------")
 
         adapter_name = "default"
         peft_config_dict = {}
@@ -207,6 +218,7 @@ def run_experiment(config):
 
                 model.load_state_dict(renamed_state_dict, strict=False)
                 print("Loaded pretrained")
+        print("-----------------------------------------------------------------")
 
         model.print_trainable_parameters()
 
@@ -215,6 +227,8 @@ def run_experiment(config):
 
     # SWAG
     if config.method.method_name == "swag":
+        print("----------------------Preparing SWAG----------------------------")
+
         swag_model = SWAG(
             model,
             no_cov_mat=not config.method.swag_cov_mat,
@@ -238,6 +252,8 @@ def run_experiment(config):
             peft_config=peft_config,
             ood_dataloader=ood_dataloader,
         )
+
+        print("--------------------------------------------------------------")
 
     else:
         raise Exception("Method not implemented")
