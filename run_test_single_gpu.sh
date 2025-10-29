@@ -10,7 +10,7 @@ SEED=3407
 MODEL="roberta-base"
 
 # optional parameter EPOCHS
-EPOCHS=3
+EPOCHS=4
 
 LEARNING_RATE=-1e-3
 CLS_LEARNING_RATE=-1e-3

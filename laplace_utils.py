@@ -343,6 +343,11 @@ def evaluate_laplace(model,
                               **laplace_params.prior_kwargs,
                               progress_bar=True)
   print("Prior precision after optimization: ", la.prior_precision)
+
+  # Drop unused references to free up memory
+  import gc
+  for i in range(5):
+      gc.collect()
   
   total_metrics = {
       "nl_marglik" : -la.log_marginal_likelihood().item()

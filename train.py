@@ -171,6 +171,7 @@ def train_swag(
     num_classes=2,
     peft_config=None,
     ood_dataloader=None,
+    save_checkpoints_at_epochs=[3, 4, 5, 6, 7],
 ):
     n_gpus = torch.cuda.device_count()
     print(f"Number of GPUs available: {n_gpus}")
@@ -300,6 +301,11 @@ def train_swag(
             f"SWAG start epoch {swag_start} is <= num_epochs {num_epochs}, SWAG collection will occur!"
         )
 
+    if min(save_checkpoints_at_epochs) >= num_epochs:
+        raise Exception(f"No checkpoints will be saved, all specified epochs exceed num_epochs: "
+                        f"save_checkpoints_at_epochs={save_checkpoints_at_epochs}, num_epochs={num_epochs}!")
+
+    # Drop unused references to free up memory
     import gc
     for i in range(5):
         gc.collect()
@@ -464,7 +470,7 @@ def train_swag(
         if accelerator.is_main_process:
             # save LoRA model if it improves upon the best validation loss thus far
             if config.method.swag_save_base_model or config.experiment.do_laplace:
-                if epoch in [3, 4, 5, 6, 7]:
+                if epoch in save_checkpoints_at_epochs:
                     checkpoint_path = os.path.join(save_path, f"checkpoint-{epoch}")
                     model.save_pretrained(checkpoint_path)
                     print(f"saved base model to path {checkpoint_path}")
@@ -627,12 +633,14 @@ def train_swag(
                                                                         pred_type=pred_type,
                                                                         prediction_kwargs=pred_kwargs))
         
-        print(f"Constructed {len(laplace_params_list)} Laplace parameter configurations.")
+        print(f"Constructed {len(laplace_params_list)} Laplace parameter configurations = {laplace_params_list}")
+        print(f"Determining checkpoints to fit Laplace approximation: save_path={save_path}")
         checkpoints_list = checkpoints_to_fit(output_dir=save_path, use_first_last=False, use_metrics=False) # "eval_comb_score", "eval_nll", "eval_acc"
 
         
         total_laplace_metrics = {}
 
+    print("-------------------------LAPLACE EVALUATION-------------------------")
     print(f"Evaluating Laplace parameters on checkpoints: {checkpoints_list} from save_path={save_path}")
 
     for checkpoint in checkpoints_list:
