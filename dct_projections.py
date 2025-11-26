@@ -217,10 +217,39 @@ def permute_to_sort_rows_and_cols_by_sums(data):
     return row_perm_indices, col_perm_indices
 
 
-def permute_and_compress(data, **compress_kwargs):
+def permute_and_compress(data, permutations="global", **compress_kwargs):
+    """
+    Permute the input data matrix to sort rows and columns by their sums,
+    then compress using DCT-based compression.
+    Args:
+        data: torch.Tensor of shape (n_rows, n_cols)
+        permutations: str, either "global" or "local"
+        **compress_kwargs: additional arguments for the compress function
+    Returns:
+        A: torch.Tensor, left projection matrix
+        R: torch.Tensor, compressed representation
+        B: torch.Tensor, right projection matrix
+    """
+    # Prepare global permutations, e.g., based on total row/column sums
     row_perm_indices, col_perm_indices = permute_to_sort_rows_and_cols_by_sums(data)
-    data_sorted = torch.gather(data, 1, col_perm_indices)
-    data_sorted = torch.gather(data_sorted, 0, row_perm_indices)
+    if permutations == "global":
+        # Apply permutations
+        data_sorted = torch.gather(data, 1, col_perm_indices)
+        data_sorted = torch.gather(data_sorted, 0, row_perm_indices)
+
+    elif permutations == "local":
+        # Get sorting indices (permutation for each column)
+        local_col_perm_indices = torch.argsort(data, dim=1)
+        # Apply permutation to obtain sorted data (cols)
+        data_sorted = torch.gather(data, 1, local_col_perm_indices)
+        # Get sorting indices (permutation for each row)
+        local_row_perm_indices = torch.argsort(data_sorted, dim=0)
+        # Apply permutation to obtain sorted data (rows)
+        data_sorted = torch.gather(data_sorted, 0, local_row_perm_indices)
+
+    else:
+        raise ValueError(f"Unknown permutations method: {permutations}")
+
     A, R, B = compress(data_sorted, **compress_kwargs)
     A, B = absorb_permutations_into_factors(A, B, row_perm_indices, col_perm_indices)
     return A, R, B
@@ -302,11 +331,3 @@ def permute_and_compress_np(data, **compress_kwargs):
 
 
 ######################################################################################
-
-if __name__ == "__main__":
-    a = create_dct_matrix(1024)
-    print(a)
-    b = create_dct_matrix2(1024)
-    print(b)
-    print(torch.allclose(a, b))
-    print(torch.max(torch.abs(a - b)))
