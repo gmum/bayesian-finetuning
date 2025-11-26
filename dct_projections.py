@@ -2,33 +2,33 @@ import torch
 import numpy as np
 
 
-def create_dct_matrix(N, device="cpu", dtype=torch.float32):
+def create_dct_matrix(N, device='cpu', dtype=torch.float32):
     """
-    Creates the N×N DCT-II transformation matrix explicitly.
-
+    Creates the N×N DCT-II transformation matrix explicitly (vectorized).
+    
     The DCT matrix D is defined such that:
     y = D @ x performs the DCT transform
     x = D.T @ y performs the inverse DCT (since D is orthogonal)
-
+    
     Args:
         N (int): Size of the matrix
         device (str or torch.device): Device to create the matrix on
         dtype (torch.dtype): Data type for the matrix
-
+        
     Returns:
         torch.Tensor: N×N DCT transformation matrix
     """
-    D = torch.zeros((N, N), device=device, dtype=dtype)
-
-    for k in range(N):
-        for n in range(N):
-            if k == 0:
-                D[k, n] = torch.sqrt(torch.tensor(1 / N, dtype=dtype))
-            else:
-                D[k, n] = torch.sqrt(torch.tensor(2 / N, dtype=dtype)) * torch.cos(
-                    torch.tensor(torch.pi * k * (2 * n + 1) / (2 * N), dtype=dtype)
-                )
-
+    # Create indices k (rows) and n (columns)
+    k = torch.arange(N, device=device, dtype=dtype).unsqueeze(1)  # Shape: (N, 1)
+    n = torch.arange(N, device=device, dtype=dtype).unsqueeze(0)  # Shape: (1, N)
+    
+    # Compute the DCT matrix using broadcasting
+    D = torch.sqrt(torch.tensor(2/N, device=device, dtype=dtype)) * \
+        torch.cos(torch.pi * k * (2*n + 1) / (2*N))
+    
+    # Fix the first row (k=0)
+    D[0, :] = torch.sqrt(torch.tensor(1/N, device=device, dtype=dtype))
+    
     return D
 
 
@@ -302,3 +302,11 @@ def permute_and_compress_np(data, **compress_kwargs):
 
 
 ######################################################################################
+
+if __name__ == "__main__":
+    a = create_dct_matrix(1024)
+    print(a)
+    b = create_dct_matrix2(1024)
+    print(b)
+    print(torch.allclose(a, b))
+    print(torch.max(torch.abs(a - b)))
