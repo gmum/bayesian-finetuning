@@ -2,37 +2,45 @@ import torch
 import numpy as np
 
 
-def create_dct_matrix(N, device='cpu', dtype=torch.float32):
+def create_dct_matrix(N, device="cpu", dtype=torch.float32):
     """
     Creates the N×N DCT-II transformation matrix explicitly (vectorized).
-    
+
     The DCT matrix D is defined such that:
     y = D @ x performs the DCT transform
     x = D.T @ y performs the inverse DCT (since D is orthogonal)
-    
+
     Args:
         N (int): Size of the matrix
         device (str or torch.device): Device to create the matrix on
         dtype (torch.dtype): Data type for the matrix
-        
+
     Returns:
         torch.Tensor: N×N DCT transformation matrix
     """
     # Create indices k (rows) and n (columns)
     k = torch.arange(N, device=device, dtype=dtype).unsqueeze(1)  # Shape: (N, 1)
     n = torch.arange(N, device=device, dtype=dtype).unsqueeze(0)  # Shape: (1, N)
-    
+
     # Compute the DCT matrix using broadcasting
-    D = torch.sqrt(torch.tensor(2/N, device=device, dtype=dtype)) * \
-        torch.cos(torch.pi * k * (2*n + 1) / (2*N))
-    
+    D = torch.sqrt(torch.tensor(2 / N, device=device, dtype=dtype)) * torch.cos(
+        torch.pi * k * (2 * n + 1) / (2 * N)
+    )
+
     # Fix the first row (k=0)
-    D[0, :] = torch.sqrt(torch.tensor(1/N, device=device, dtype=dtype))
-    
+    D[0, :] = torch.sqrt(torch.tensor(1 / N, device=device, dtype=dtype))
+
     return D
 
 
-def compress(matrix, keep_dims=(10, 10), select_by="energy", absorb_R=True):
+def compress(
+    matrix,
+    rank=None,
+    keep_dims=(10, 10),
+    select_by="energy",
+    absorb_R=True,
+    **ignored_kwargs,
+):
     """
     Compresses a 2D matrix using the Discrete Cosine Transform (DCT)
     by keeping coefficients with the highest energy (magnitude).
@@ -56,6 +64,9 @@ def compress(matrix, keep_dims=(10, 10), select_by="energy", absorb_R=True):
             # - 'D_row': Full DCT matrix for rows (for reference)
             # - 'D_col': Full DCT matrix for columns (for reference)
     """
+    if rank is not None:
+        keep_dims = (rank, rank)
+
     m, n = matrix.shape
     device = matrix.device
     dtype = matrix.dtype
