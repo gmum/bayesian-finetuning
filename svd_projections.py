@@ -26,9 +26,7 @@ def get_linear_rec_svd(
     return reconstructed_matrix, reduced_matrix, svd.components_
 
 
-def compress(
-    W, rank, n_iter=5, random_state=42, **ignored_kwargs
-):  # @TODO fix default args
+def compress(W, rank, n_iter=10, random_state=42, **ignored_kwargs):
     reconstructed_matrix, enc, dec = get_linear_rec_svd(
         W.cpu().detach().numpy(),
         rank,

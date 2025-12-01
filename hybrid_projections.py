@@ -28,6 +28,9 @@ def _calculate_component_ranks(specification: str, total_rank: int) -> Dict[str,
     Returns:
         A dictionary mapping method name (str) to allocated rank (int).
     """
+    print(
+        f"[hybrid] Calculating component ranks: specification {specification}, total_rank {total_rank}"
+    )
     parts = specification.split("_")
 
     specified_fractions = {}
@@ -130,7 +133,8 @@ def compress(
 
     # 1. Calculate Ranks
     component_ranks = _calculate_component_ranks(specification, rank)
-    print(f"[mixed_decomposition] Component Ranks: {component_ranks}")
+    print(f"[hybrid] Component Ranks: {component_ranks}")
+    print(f"[hybrid] Configuration per part: {cfg_kwargs}")
 
     # --- 2. Execute Decompositions and Combine Results ---
 

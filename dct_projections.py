@@ -37,7 +37,7 @@ def compress(
     matrix,
     rank=None,
     keep_dims=(10, 10),
-    select_by="energy",
+    dct_select_by="energy",
     absorb_R=True,
     **ignored_kwargs,
 ):
@@ -85,7 +85,8 @@ def compress(
     k_rows = min(keep_dims[0], m)
     k_cols = min(keep_dims[1], n)
 
-    if select_by == "energy":
+    print(f"[dct] DCT coefficient selection method: {dct_select_by}")
+    if dct_select_by == "energy":
         # 4. Calculate energy (squared magnitude) for each row and column
         row_energy = torch.sum(dct_coeffs**2, dim=1)  # Energy per row
         col_energy = torch.sum(dct_coeffs**2, dim=0)  # Energy per column
@@ -94,18 +95,18 @@ def compress(
         row_indices = torch.argsort(row_energy, descending=True)[:k_rows]  # Top k_rows
         col_indices = torch.argsort(col_energy, descending=True)[:k_cols]  # Top k_cols
 
-    elif select_by == "top-left":
+    elif dct_select_by == "top-left":
         # Simply take the first k_rows and k_cols
         row_indices = torch.arange(k_rows, device=device)
         col_indices = torch.arange(k_cols, device=device)
 
     else:
         raise ValueError(
-            f"Unknown selection method: {select_by}" " (choose 'energy' or 'top-left')!"
+            f"Unknown selection method: {dct_select_by}" " (choose 'energy' or 'top-left')!"
         )
 
-    print(f"[compress] Selected row indices (DCT space): {row_indices}")
-    print(f"[compress] Selected column indices (DCT space): {col_indices}")
+    print(f"[dct] Selected row indices (DCT space): {row_indices}")
+    print(f"[dct] Selected column indices (DCT space): {col_indices}")
 
     # Sort indices to maintain relative order
     row_indices, _ = torch.sort(row_indices)
@@ -124,14 +125,14 @@ def compress(
     A = D_row.T[:, row_indices]  # m × k_rows: IDCT basis for selected row frequencies
     B = D_col[col_indices, :]  # k_cols × n: DCT basis for selected col frequencies
 
-    print(f"[compress] A shape: {A.shape}, R shape: {R.shape}, B shape: {B.shape}")
+    print(f"[dct] A shape: {A.shape}, R shape: {R.shape}, B shape: {B.shape}")
 
     if absorb_R:
         # Absorb R into A and B for simplified representation
         A = A @ R  # Now A is m × k_cols
         R = torch.eye(k_cols, device=device, dtype=dtype)  # Identity matrix
         print(
-            f"[compress] After absorbing R, new A shape: {A.shape}, R shape: {R.shape}"
+            f"[dct] After absorbing R, new A shape: {A.shape}, R shape: {R.shape}"
         )
 
     return A, R, B

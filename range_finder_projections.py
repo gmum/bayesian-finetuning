@@ -32,8 +32,8 @@ def _orthonormalize(A: torch.Tensor) -> torch.Tensor:
 def compress(
     W: torch.Tensor,
     rank: int,
-    oversampling: int = 5,
-    n_power_iter: int = 0,
+    finder_oversampling: int = 5,
+    finder_n_power_iter: int = 0,
     absorb_R: bool = True,
     **ignored_kwargs,
 ):
@@ -55,13 +55,15 @@ def compress(
     n, m = W.shape
     assert 1 <= rank <= min(n, m)
 
-    k = min(rank + oversampling, n, m)
+    print(f"[randomized_range_finder] Config: oversampling={finder_oversampling}, n_power_iter={finder_n_power_iter}")
+
+    k = min(rank + finder_oversampling, n, m)
 
     # ----- left subspace (rows of W) -----
     Omega_right = torch.randn(m, k, device=W.device, dtype=W.dtype)  # (m x k)
     Y = W @ Omega_right  # (n x k)
 
-    for _ in range(n_power_iter):
+    for _ in range(finder_n_power_iter):
         Y = W @ (W.T @ Y)
 
     Q_left = _orthonormalize(Y)  # (n x k)
@@ -71,7 +73,7 @@ def compress(
     Omega_left = torch.randn(n, k, device=W.device, dtype=W.dtype)  # (n x k)
     Z = W.T @ Omega_left  # (m x k)
 
-    for _ in range(n_power_iter):
+    for _ in range(finder_n_power_iter):
         Z = W.T @ (W @ Z)
 
     Q_right = _orthonormalize(Z)  # (m x k)

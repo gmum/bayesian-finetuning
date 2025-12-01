@@ -4,8 +4,8 @@ import torch
 def compress(
     W,
     rank,
-    n_iter=5,
-    oversample=10,
+    rsvd_n_iter=10,
+    rsvd_oversample=10,
     absorb_R=True,
     **ignored_kwargs,
 ):
@@ -27,7 +27,12 @@ def compress(
         B (torch.Tensor): Right projection (r x m). Approximate Right Singular Vectors.
     """
     n, m = W.shape
-    k = rank + oversample
+    k = rank + rsvd_oversample
+
+    print(
+        f"[randomized_svd] Decomposing matrix of shape {W.shape} to rank {rank}. "
+        f"Configuration n_iter={rsvd_n_iter}, oversample={rsvd_oversample} (k={k})"
+    )
 
     # 1. Generate Random Test Matrix (Gaussian)
     # Omega shape: (m x k)
@@ -40,7 +45,7 @@ def compress(
     # 3. Power Iterations (Halko et al., 2011, Algorithm 4.3)
     # This reduces the error if singular values don't decay rapidly.
     # We multiply by W W^T to push Y towards the dominant singular vectors.
-    for _ in range(n_iter):
+    for _ in range(rsvd_n_iter):
         Y = W @ (W.T @ Y)
 
     # 4. Orthogonalize the Sketch (QR Decomposition)
