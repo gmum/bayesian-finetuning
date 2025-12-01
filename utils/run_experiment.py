@@ -171,6 +171,9 @@ def run_experiment(config):
         with open("conf/reconstruct_config.yaml", "r") as stream:
             reconstr_config = yaml.load(stream, Loader=yaml.FullLoader)
         reconstr_type = reconstr_config["reconstruction_type"]
+        if reconstr_type not in reconstr_config:
+            print(f"WARNING: No specific config for reconstruction type = {reconstr_type} found!")
+            reconstr_config[reconstr_type] = {}  # Empty config if nothing overridden
         reconstr_config[reconstr_type]["rank"] = peft_config_dict[adapter_name].r
         print("XS-RANK ", peft_config_dict[adapter_name].r)
 
