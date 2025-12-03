@@ -7,6 +7,7 @@ import random_projections
 import dct_projections
 import randomized_svd_projections
 import range_finder_projections
+import cca_projections
 
 
 # Map the string name to the corresponding function
@@ -18,6 +19,7 @@ DECOMPOSITION_METHODS: Dict[
     "random": random_projections.compress,
     "rsvd": randomized_svd_projections.compress,
     "finder": range_finder_projections.compress,
+    "cca": cca_projections.compress,
 }
 
 

@@ -114,7 +114,7 @@ def run_svd(
 def get_linear_rec_svd(
     input_matrix: np.ndarray, rank: int, n_iter: int, random_state: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    print(f"[get_linear_rec_svd] input_matrix={input_matrix.shape}, rank={rank}, n_iter={n_iter}, random_state={random_state}")
+    print(f"[loraxs.get_linear_rec_svd] input_matrix={input_matrix.shape}, rank={rank}, n_iter={n_iter}, random_state={random_state}")
     reduced_matrix, svd = run_svd(input_matrix, rank, n_iter, random_state)
 
     reconstructed_matrix = svd.inverse_transform(reduced_matrix)
@@ -140,7 +140,7 @@ def get_replacement_module(weight, module_name, reconstruction_type, writer, rec
     else:
         import hybrid_projections
         final_enc, reduced_matrix, final_dec = hybrid_projections.compress(
-            weight, specification=reconstruction_type, **cfg
+            weight, specification=reconstruction_type, module_name=module_name, **cfg
         )
         ## Make sure the reduced matrix (torch) is diagonal eye
         assert torch.allclose(reduced_matrix, torch.eye(final_enc.shape[1], device=weight.device), atol=1e-5), \
@@ -150,7 +150,7 @@ def get_replacement_module(weight, module_name, reconstruction_type, writer, rec
     # else:
     # raise NotImplementedError(f"{reconstruction_type} is currently not supported.")
 
-    print(f"[get_replacement_module] Module: {module_name}, Original weight shape: {weight.shape}, "
+    print(f"[loraxs.get_replacement_module] Module: {module_name}, Original weight shape: {weight.shape}, "
             f"Enc shape: {final_enc.shape}, Dec shape: {final_dec.shape}")
 
     return final_enc, final_dec
@@ -239,6 +239,7 @@ def find_and_initialize(
             key.endswith(target_key) for target_key in lora_config.target_modules
         )
         if target_module_found:
+            print(f"[loraxs.find_and_initialize] Found target module: {key} for LoRA initialization.")
             if not is_target_modules_in_base_model:
                 is_target_modules_in_base_model = True
             _, target, target_name = _get_submodules(model, key)
@@ -253,6 +254,9 @@ def find_and_initialize(
                         reconstruct_config=reconstruct_config,
                     )
                 )
+                print(f"[loraxs.find_and_initialize] module: {key}: target.weight={target.weight.shape}"
+                      f"enocder={replacement_encoder_weight.shape} "
+                      f"decoder={replacement_decoder_weight.shape}")
 
                 if not isinstance(target, peft.tuners.lora.Linear):
                     raise NotImplementedError(

@@ -11,7 +11,7 @@ import random
 
 from loraxs import find_and_initialize
 from train import train_swag
-from utils.peft_utils import create_peft_model, get_peft_config
+from utils.peft_utils import create_peft_model, create_pretrained_model, get_peft_config
 from utils.config_utils import set_save_path
 from data import (
     load_glue_data,
@@ -32,7 +32,7 @@ def run_experiment(config):
     # accelerator = Accelerator(
     #     split_batches=True, log_with="wandb", deepspeed_plugin=deepspeed_plugin
     # )  # mixed_precision='fp16')
-    
+
     accelerator = Accelerator(
         split_batches=True, log_with="wandb"
     )
@@ -59,7 +59,7 @@ def run_experiment(config):
 
     # Create a descriptive run name
     run_name = f"{model_name}_{task}_{'loraxs' if config.experiment.use_loraxs else 'lora'}_seed{config.experiment.seed}_lr{config.experiment.learning_rate}_cls_lr{config.experiment.cls_learning_rate}_ep{config.experiment.num_epochs}"
-    
+
     accelerator.init_trackers(
         project_name=config.experiment.wandb_project,
         init_kwargs={
@@ -93,7 +93,6 @@ def run_experiment(config):
         print("***********************WARNING************************")
         print("Cannot use Laplace with SWAG!")
         print("***********************WARNING************************")
-
 
     # Load data
     print("-----------------------Preparing data------------------------")
@@ -178,6 +177,24 @@ def run_experiment(config):
         print("XS-RANK ", peft_config_dict[adapter_name].r)
 
         print("LORA-XS MODE ", config.experiment.loraxs_mode)
+
+        ##########################################################################
+        if "cca" in reconstr_type:
+            print("Precomputing layers input covariances for CCA")
+            pretrained_model = create_pretrained_model(
+                config, num_classes=num_classes, tokenizer=tokenizer
+            )
+            if torch.cuda.device_count() > 0:
+                pretrained_model = pretrained_model.to("cuda")
+
+            import cca_projections
+            cca_projections.precompute_covariances(
+                pretrained_model=pretrained_model,
+                target_modules=config.model.target_modules,
+                dataloader=train_dataloader,
+                # max_steps=10,
+            )
+        ##########################################################################
 
         find_and_initialize(
             model,
