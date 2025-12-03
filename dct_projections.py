@@ -217,12 +217,12 @@ def permute_to_sort_rows_and_cols_by_sums(data):
         total_col_perm_indices: torch.Tensor of shape (n_rows, n_cols)
     """
     # Sort columns based on total column sums (same for each row)
-    col_sums = data.sum(dim=0)
+    col_sums = abs(data).sum(dim=0)
     col_perm_indices = col_sums.argsort()
     col_perm_indices = col_perm_indices.unsqueeze(0).expand(data.shape[0], -1)
 
     # Sort rows based on total row sums (same for each column)
-    row_sums = data.sum(dim=1)
+    row_sums = abs(data).sum(dim=1)
     row_perm_indices = row_sums.argsort()
     row_perm_indices = row_perm_indices.unsqueeze(1).expand(-1, data.shape[1])
 
