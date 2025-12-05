@@ -22,52 +22,6 @@ import yaml
 from loraxs import find_and_initialize
 
 
-def load_run_config(configs_path, task_name, rank, common_pref="", spec_pref=""):
-    common_conf_name = os.path.join(configs_path, f"{common_pref}config.yaml")
-    with open(common_conf_name, "r") as stream:
-        common_conf = yaml.load(stream, Loader=yaml.FullLoader)
-    
-    # merge common and specific configs, spec overrides common
-    config = common_conf
-    
-    spec_conf_name = os.path.join(configs_path, task_name, f"{spec_pref}{task_name}_r{rank}.yaml")
-    if os.path.exists(spec_conf_name):
-        with open(spec_conf_name, "r") as stream:
-            spec_conf = yaml.load(stream, Loader=yaml.FullLoader)
-            config.update(spec_conf)
-    
-    return config
-
-def get_output_dir_loraxs_args(root_dir,
-                          task_name,
-                          model_name_or_path,
-                          peft_method,
-                          lora_rank,
-                          learning_rate,
-                          cls_learning_rate,
-                          seed):
-    peft_method = "lora_xs"
-    output_dir = os.path.join(
-        root_dir,
-        task_name,
-        f"{model_name_or_path}_{peft_method}_rank_{lora_rank}_lr_{float(learning_rate)}_clslr_{float(cls_learning_rate)}_seed_{seed}"
-    )
-    os.makedirs(output_dir, exist_ok=True)
-    
-    return output_dir
-
-def get_output_dir_loraxs(data_args, model_args, training_args):
-    peft_method = "lora_xs"
-    output_dir = os.path.join(
-        training_args.output_dir,
-        data_args.task_name,
-        f"rank_{model_args.lora_rank}",
-        f"{model_args.model_dir_prefix}{model_args.model_name_or_path}_{peft_method}_lr_{float(training_args.learning_rate)}_clslr_{float(model_args.cls_learning_rate)}_seed_{training_args.seed}_ep_{training_args.num_train_epochs}"
-    )
-    os.makedirs(output_dir, exist_ok=True)
-    
-    return output_dir
-
 def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: bool, verbose: bool = False) -> None:
     """
     Loads adapter weights from a given checkpoint directory into the model.
@@ -136,48 +90,7 @@ def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: b
 
     model.load_state_dict(renamed_state_dict, strict=False)
 
-def create_lora_model(model_args, data_args, num_labels):
-    peft_config = LoraConfig(
-        task_type="SEQ_CLS",
-        inference_mode=False,
-        r=model_args.lora_rank,
-        lora_alpha=model_args.lora_alpha,
-        lora_dropout=0.0,
-        target_modules=["query", "value", "attention.output.dense", "output.dense"],
-    )
-    
-    config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name
-        else model_args.model_name_or_path,
-        num_labels=num_labels,
-        finetuning_task=data_args.task_name,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_args.tokenizer_name
-        if model_args.tokenizer_name
-        else model_args.model_name_or_path,
-        cache_dir=model_args.cache_dir,
-        use_fast=model_args.use_fast_tokenizer,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-        ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
-    )
 
-    model = get_peft_model(model, peft_config)
-    
-    return model, tokenizer
 
 
 def create_loraxs_model(lora_model: PeftModel, create_fast: bool = False, verbose: bool = False):
@@ -218,15 +131,3 @@ def create_loraxs_model(lora_model: PeftModel, create_fast: bool = False, verbos
     
     return lora_model, peft_config_dict, reconstr_config, adapter_name
 
-
-def load_loraxs_mnli_checkpoint(lora_model, lora_rank, fail_on_missing: bool = True):
-    CHECKPOINTS_ROOT = "/shared/results/z1192950/Laplace/mnli/roberta-large/loraxs"
-    checkpoint_dir = os.path.join(CHECKPOINTS_ROOT, f"rank_{lora_rank}")
-    print(f"Loading MNLI checkpoint from {checkpoint_dir}.")
-    if not os.path.exists(checkpoint_dir):
-        if fail_on_missing:
-            raise ValueError(f"Checkpoint directory not found at {checkpoint_dir}.")
-        else:
-            print(f"Checkpoint directory not found at {checkpoint_dir}.")
-            return
-    load_loraxs_weights(lora_model, checkpoint_dir, load_classifier=False)
