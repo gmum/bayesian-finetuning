@@ -167,9 +167,11 @@ def run_experiment(config):
         if not isinstance(peft_config, PromptLearningConfig):
             peft_config_dict[adapter_name] = peft_config
 
-        with open("conf/reconstruct_config.yaml", "r") as stream:
+        reconstruct_config_filename = config.get("reconstruct_config", "reconstruct_config.yaml")
+        print(f"Loading reconstruct_config from conf/{reconstruct_config_filename}")
+        with open(f"conf/{reconstruct_config_filename}", "r") as stream:
             reconstr_config = yaml.load(stream, Loader=yaml.FullLoader)
-        reconstr_type = reconstr_config["reconstruction_type"]
+        reconstr_type = config.get("reconstruction_type", reconstr_config["reconstruction_type"])
         if reconstr_type not in reconstr_config:
             print(f"WARNING: No specific config for reconstruction type = {reconstr_type} found!")
             reconstr_config[reconstr_type] = {}  # Empty config if nothing overridden
@@ -192,7 +194,7 @@ def run_experiment(config):
                 pretrained_model=pretrained_model,
                 target_modules=config.model.target_modules,
                 dataloader=train_dataloader,
-                # max_steps=10,
+                max_steps=10,
             )
         ##########################################################################
 

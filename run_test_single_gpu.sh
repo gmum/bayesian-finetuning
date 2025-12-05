@@ -11,12 +11,11 @@
 #SBATCH --output=test1gpu-%j.out
 #SBATCH --error=test1gpu-%j.err
 
-echo "A single-GPU test script..."
-
 ##Specific for the cluster
-#ml ML-bundle/24.06a
-#source .env/bin/activate
+ml ML-bundle/24.06a
+source .env/bin/activate
 
+echo "A single-GPU test script..."
 
 # CONFIGURATION PARAMETERS:
 LORA_R=4
@@ -39,6 +38,32 @@ LORA_ALPHA=16
 UNFREEZE_A=False
 UNFREEZE_B=False
 
+RECONSTRUCT_CONFIG="reconstruct_config.yaml"
+# RECONSTRUCT_CONFIG="reconstruct_config_halfdct.yaml"
+
+RECONSTRUCT_TYPE="dct-1/4_svd-1/4_random"  # overrides the value from the reconstruct_config
+
+
 # RUN ON A SINGLE GPU:
-torchrun --standalone --nnodes=1 --nproc_per_node=1 launch_exp_hydra.py model=$MODEL experiment.task=$TASK experiment.do_laplace=$DO_LAPLACE method.force_save=-1 experiment.learning_rate=$LEARNING_RATE experiment.cls_learning_rate=$CLS_LEARNING_RATE experiment.num_epochs=$EPOCHS experiment.use_loraxs=True experiment.lora_r=$LORA_R experiment.lora_alpha=$LORA_ALPHA experiment.seed=$SEED experiment.skip_training=False experiment.overwrite=True experiment.lora_dropout=$LORA_DROPOUT experiment.lora_weight_decay=$LORA_WEIGHT_DECAY experiment.classifier_weight_decay=$CLASSIFIER_WEIGHT_DECAY experiment.unfreeze_A=$UNFREEZE_A experiment.unfreeze_B=$UNFREEZE_B
+torchrun --standalone --nnodes=1 --nproc_per_node=1 launch_exp_hydra.py \
+ +reconstruct_config=$RECONSTRUCT_CONFIG \
+ +reconstruction_type=$RECONSTRUCT_TYPE \
+ model=$MODEL \
+ method.force_save=-1 \
+ experiment.task=$TASK \
+ experiment.do_laplace=$DO_LAPLACE \
+ experiment.learning_rate=$LEARNING_RATE \
+ experiment.cls_learning_rate=$CLS_LEARNING_RATE \
+ experiment.num_epochs=$EPOCHS \
+ experiment.use_loraxs=True \
+ experiment.lora_r=$LORA_R \
+ experiment.lora_alpha=$LORA_ALPHA \
+ experiment.seed=$SEED \
+ experiment.skip_training=False \
+ experiment.overwrite=True \
+ experiment.lora_dropout=$LORA_DROPOUT \
+ experiment.lora_weight_decay=$LORA_WEIGHT_DECAY \
+ experiment.classifier_weight_decay=$CLASSIFIER_WEIGHT_DECAY \
+ experiment.unfreeze_A=$UNFREEZE_A \
+ experiment.unfreeze_B=$UNFREEZE_B
 
