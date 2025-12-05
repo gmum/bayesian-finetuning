@@ -13,23 +13,19 @@
 ml ML-bundle/24.06a
 
 # cd $SCRATCH
-
-cd $GRANT_DIR
+# cd $GRANT_DIR
 
 # create and activate the virtual environment 
-# python -m venv  laplace_loraxs/
-# source laplace_loraxs/bin/activate
+python -m venv .env/
+source .env/bin/activate
 
-# python -m venv bloraxs/
-source bloraxs/bin/activate
+# # install one of torch versions available at Helios wheel repo
+# pip install --no-cache-dir torch==2.5.1+cu124.post3
 
-# install one of torch versions available at Helios wheel repo
-pip install --no-cache-dir torch==2.5.1+cu124.post3
-
-pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/accelerate-1.1.0-py3-none-any.whl 
-pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchaudio-2.4.0+cu124-cp311-cp311-linux_aarch64.whl
-pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchvision-0.20.1+cu124torch251-cp311-cp311-linux_aarch64.whl
-pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchmetrics-1.4.0.post0-py3-none-any.whl
+# pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/accelerate-1.1.0-py3-none-any.whl 
+# pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchaudio-2.4.0+cu124-cp311-cp311-linux_aarch64.whl
+# pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchvision-0.20.1+cu124torch251-cp311-cp311-linux_aarch64.whl
+# pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/torchmetrics-1.4.0.post0-py3-none-any.whl
 
 
 # pip install /net/software/aarch64/el8/wheels/ML-bundle/24.06a/bitsandbytes-0.44.1-cp311-cp311-linux_aarch64.whl
@@ -39,6 +35,6 @@ pip install --no-cache-dir /net/software/aarch64/el8/wheels/ML-bundle/24.06a/tor
 # install the rest of requirements, for example via requirements file
 pip install --no-cache-dir -r requirements.txt
 
-pip install --no-cache-dir wandb==0.16.1
+# pip install --no-cache-dir wandb==0.16.1
 
-pip list
+# pip list
