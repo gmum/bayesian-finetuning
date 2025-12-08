@@ -3,17 +3,19 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
-#SBATCH --time=02:00:00
+#SBATCH --time=00:10:00
 #SBATCH --account=plgbloraxs-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
-#SBATCH --output=job-%j.out
-#SBATCH --error=job-%j.err
+#SBATCH --output=prepare_env-%j.out
+#SBATCH --error=prepare_env-%j.err
 
 # IMPORTANT: load the modules for machine learning tasks and libraries
 ml ML-bundle/24.06a
 
 # cd $SCRATCH
-# cd $GRANT_DIR
+echo "USING WORKSPACE_DIR=$WORKSPACE_DIR"
+cp requirements.txt $WORKSPACE_DIR/
+cd $WORKSPACE_DIR
 
 # create and activate the virtual environment 
 python -m venv .env/

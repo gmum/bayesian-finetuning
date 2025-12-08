@@ -4,8 +4,8 @@ datasets==4.2.0
 transformers==4.57.0
 tabulate==0.9.0
 peft==0.17.1
-scikit-learn==1.7.2
-matplotlib==3.10.7
+scikit-learn
+matplotlib
 torchmetrics==1.8.2
 opt_einsum==3.4.0
 asdfghjkl @ git+https://github.com/kazukiosawa/asdl@b7afcaabd6d9c4501f1466f8d4610d238bfc2e87
@@ -15,3 +15,4 @@ curvlinops-for-pytorch==2.0.1
 hydra-core==1.3.2
 wandb==0.16.1
 gpytorch<1.10
+sentencepiece==0.2.0

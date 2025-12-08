@@ -4,7 +4,8 @@ Our repository is based on
 [https://github.com/gmum/b-lora-xs](https://github.com/gmum/b-lora-xs)
 
 ## Setup
-Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt)
+Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt).
+Set your workspace directory using `export WORKSPACE_DIR=path`.
 
 We use Accelerate and Hydra to run our experiments. Accelerate expects the following variables exported to the working environment:
 ```
