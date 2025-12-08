@@ -6,7 +6,24 @@ Our repository is based on
 ## Setup
 Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt)
 
-We use Accelerate and Hydra to run our experiments.
+We use Accelerate and Hydra to run our experiments. Accelerate expects the following variables exported to the working environment:
+```
+export RANK=0
+export LOCAL_RANK=0
+export WORLD_SIZE=1
+export MASTER_ADDR=localhost
+export MASTER_PORT=$((12000 + RANDOM % 20000))
+```
+
+We use WandDB for monitoring. To log in:
+```
+pip install wandb weave
+wandb login
+```
+To set it up modify wandb entries in [conf/config.yaml](conf/config.yaml).
+
+To use HuggingFace models one needs to `export HF_TOKEN=...` and request access to the models.
+In particular we use `meta-llama/Llama-2-7b-chat-hf`.
 
 Test your enviornment on a machine with GPU using [run_test_single_gpu.sh](run_test_single_gpu.sh).
 
