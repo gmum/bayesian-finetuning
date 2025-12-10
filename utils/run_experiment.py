@@ -60,6 +60,7 @@ def run_experiment(config):
     # Create a descriptive run name
     run_name = f"{model_name}_{task}_{'loraxs' if config.experiment.use_loraxs else 'lora'}_seed{config.experiment.seed}_lr{config.experiment.learning_rate}_cls_lr{config.experiment.cls_learning_rate}_ep{config.experiment.num_epochs}"
 
+    print(f"WANDB: entity:{config.experiment.wandb_entity} group:{wandb_group} tags:{active_tags} name:{run_name}")
     accelerator.init_trackers(
         project_name=config.experiment.wandb_project,
         init_kwargs={
@@ -67,7 +68,7 @@ def run_experiment(config):
                 "entity": config.experiment.wandb_entity,
                 "group": wandb_group,
                 "tags": active_tags,
-                "name": run_name,
+                "name": config.experiment.exp_name + " " + run_name,
             }
         },
     )
@@ -196,6 +197,8 @@ def run_experiment(config):
                 dataloader=train_dataloader,
                 max_steps=10,
             )
+
+            cca_projections.move_covariances_to_cpu()
         ##########################################################################
 
         find_and_initialize(
