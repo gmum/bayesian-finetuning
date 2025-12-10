@@ -44,6 +44,13 @@ capture_module_input_hook.print_line_counter = 0
 capture_module_input_hook.covariance_accumulators = {}
 
 
+def move_covariances_to_cpu():
+    print("[cca.move_covariances_to_cpu] moving tensors to CPU")
+    for acm in capture_module_input_hook.covariance_accumulators.values():
+        acm.to_cpu()
+    torch.cuda.empty_cache()
+
+
 def register_module_hooks(model, target_modules):
     print(
         f"[cca.register_hooks_for_cca] Registering hooks for target modules: {target_modules} (model={model})"

@@ -89,3 +89,6 @@ class CovarianceAccumulator:
         # Return in standard float32 precision for use with neural networks
         # return Sigma_xx.float()
         return Sigma_xx.type(self.dtype)
+
+    def to_cpu(self):
+        self.C_k = self.C_k.cpu()
