@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
-#SBATCH --time=00:10:00
+#SBATCH --time=00:30:00
 #SBATCH --account=plgbloraxs-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --output=prepare_env-%j.out
