@@ -14,6 +14,72 @@ from transformers import (
 )
 from peft.tuners.lora import LoraConfig
 import torch
+from types import SimpleNamespace
+
+
+def get_id_list(task_name: str, tokenizer):
+    task_name = task_name.lower()
+    if task_name == 'boolq':
+        return [tokenizer.encode('False')[1], tokenizer.encode('True')[1]]
+    elif task_name in ('openbookqa', 'obqa'):
+        return [tokenizer.encode('A')[1], tokenizer.encode('B')[1], tokenizer.encode('C')[1], tokenizer.encode('D')[1]]
+    elif 'arc' in task_name or task_name in ('mmlu', 'arc-e', 'arc-c'):
+        return [tokenizer.encode('A')[1], tokenizer.encode('B')[1], tokenizer.encode('C')[1], tokenizer.encode('D')[1]]
+    elif 'winogrande' in task_name:
+        return [tokenizer.encode('A')[1], tokenizer.encode('B')[1]]
+    elif task_name == 'cqa':
+        return [tokenizer.encode('A')[1], tokenizer.encode('B')[1], tokenizer.encode('C')[1], tokenizer.encode('D')[1], tokenizer.encode('E')[1]]
+    else:
+        # Default to four-way choices if an MCQA task alias is missed, avoiding full-vocab logits
+        return [tokenizer.encode('A')[1], tokenizer.encode('B')[1], tokenizer.encode('C')[1], tokenizer.encode('D')[1]]
+
+
+class WrappedModel(torch.nn.Module):
+    """
+    WrappedModel class and get_id_list are used to ensure that we can use a generative model 
+    in classification MCQA tasks during evaluation, where predefined classes are expected. 
+    The same approach is used in Laplace Lora paper and SWAG Lora papers.
+    """
+    def __init__(self, model, task_name: str, tokenizer, verbose: bool = True):
+        super().__init__()
+        self.id_list = get_id_list(task_name, tokenizer)
+        
+        self.model = model
+
+        if verbose:
+            print(self.model)
+
+    def get_peft_model(self) -> PeftModel:
+        return self.model
+
+    def forward(self, **kwargs):
+        kwargs.pop('labels', None)
+        output_dict = self.model(**kwargs)
+        logits = output_dict['logits']
+        selected_logits = logits[:, -1, self.id_list]
+
+        # Return an object with a `.logits` attribute and keep a dummy
+        # sequence dimension so existing indexing `[:, -1, :]` works.
+        wrapped_output = SimpleNamespace(
+            logits=selected_logits.to(torch.float32).unsqueeze(1)
+        )
+        return wrapped_output
+
+    def __getattr__(self, name):
+        # Delegate attribute access to the underlying PEFT model when
+        # the attribute is not found on the wrapper.
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.model, name)
+
+    # Explicit pass-throughs for common HF/PEFT APIs used elsewhere
+    def save_pretrained(self, *args, **kwargs):
+        return self.model.save_pretrained(*args, **kwargs)
+
+    def load_adapter(self, *args, **kwargs):
+        return self.model.load_adapter(*args, **kwargs)
+
 
 
 def create_transformer(config, num_classes=2, cache_dir=None):
@@ -93,12 +159,15 @@ def create_peft_model(
     task_type = TASK_TYPE_DICT[config.experiment.task]
     model = create_transformer(config, num_classes)
 
-    if "meta-llama" in config.model.model_name and task_type == "MCQA":
-        trim_head_for_mcqa(model, config.experiment.task,
-                           peft_config, tokenizer)
-
+    # if "meta-llama" in config.model.model_name and task_type == "MCQA":
+    #     # Don't trim head for MCQA straight away to be able to apply Lora adapter to the final output layer 
+    #     # lm_head [dim, vocab_size]
+    #     # trim_head_for_mcqa(model, config.experiment.task,
+    #     #                    peft_config, tokenizer)
+    
     model = get_peft_model(model, peft_config)
-    model.print_trainable_parameters()
+
+    # model.print_trainable_parameters()
 
     return model
 

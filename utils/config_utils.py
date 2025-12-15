@@ -35,24 +35,17 @@ def set_save_path(config, accelerator):
         elif config.method.method_name == "f-wgd":
             exp_name += "^nparticles_" + str(config.method.n_particles)
 
-        elif config.method.method_name == "swag":
+        elif config.method.method_name == "laplace":
             # exp_name += "^" + "^".join(
             #     [
-            #         "cov_" + str(config.method.swag_cov_mat),
-            #         "swagstart_" + str(config.method.swag_start),
-            #         "lr_" + str(config.method.swag_learning_rate),
-            #         "mod_" + config.method.modules_to_swag,
-            #         "sch_" + config.method.swag_scheduler,
-            #         "startbestmodel_" +
-            #             str(config.method.swag_start_with_lowest_loss),
-            #         "maxmodels_" + str(config.method.swag_max_num_models),
-            #         "cepochs_" + str(config.method.swag_c_epochs),
+            #         "hess_" + str(config.method.hessian_structure),
+            #         "laplace_" + str(config.method.do_laplace),
             #     ]
             # )
             exp_name += ""
         else:
             raise Exception(
-                "only swag, wgd, f-wgd and ensemble methods supported")
+                "only laplace, wgd, f-wgd and ensemble methods supported")
 
     # Generate a timestamp
     timestamp = "_to_be_replaced"
@@ -60,7 +53,7 @@ def set_save_path(config, accelerator):
         accelerator.device
     )
     if accelerator.is_main_process:
-        timestamp = str(datetime.now().strftime("%Y%m%d-%H%M%S"))
+        timestamp = str(datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3])  # Up to milliseconds
         timestamp_tensor = torch.ByteTensor(list(timestamp.encode("utf-8"))).to(
             accelerator.device
         )

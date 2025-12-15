@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - model: roberta-large
-  - method: swag
+  - method: laplace
 
 model:
   batch_size: 32 # 8 for llama
@@ -10,9 +10,6 @@ model:
 experiment:
   seed: 10
   use_loraxs: True # whether to use LoRa-XS or LoRa modules
-
-  do_laplace: True # whether to do post-hoc Laplace approximation on chosen checkpoints
-
   skip_training: False # whether to skip training and only do evaluation
 
   val_split_size: 0.2
@@ -31,7 +28,7 @@ experiment:
 
   num_epochs: 15
   set_fraction: 1.0 # fraction of training dataset used for learning (value between 0 and 1, inclusively)
-
+  save_checkpoints_at_epochs: [4, 5, 6] # epochs at which to save checkpoints during training
   weight_decay: 0
   scheduler: "linear"
   warmup_length: 0.06
@@ -49,10 +46,14 @@ experiment:
   lora_alpha: 16
   lora_dropout: 0.0
   train_biases: "none"
+  # Unfreeze Parameters
   unfreeze_A: False
   unfreeze_B: False
+  extend_target_modules: False
+  # LoRa-XS parameters
   loraxs_sigma: 0.00001
   loraxs_mode: "normal"
+  add_lm_head: False # whether to target ["lm_head"] module as was done in Laplace paper
 
   exp_group_name: "linearization" # "new_exp"
   save_folder: "/net/storage/pr3/plgrid/plggploraxs/plgloquacious/laplace_results" # default save location
@@ -70,10 +71,9 @@ experiment:
 
 evaluation:
   seed: 10
-  eval_method: "swag" # 'swag' | 'dropout'
+  eval_method: "laplace" # 'laplace' | 'dropout'
   eval_model_path: "NONE" # set to the model path to use in evaluation
   num_samples: 1 # number of samples (e.g. for dropout/SWAG)
-  swag_sample_scale: 1.0 # covariance scaling parameter for SWAG (https://github.com/wjmaddox/swa_gaussian)
   only_ood: False # only run OOD eval (skip ID eval)
 
 hydra:

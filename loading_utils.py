@@ -112,6 +112,7 @@ def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: b
             print("Not loading classifier weights.")
         renamed_state_dict = {k: v for k, v in renamed_state_dict.items() if "classifier" not in k}
     else:
+        # For Roberta-Large, we fine-tune all classifier weights the same way as in Lora Laplace paper
         # change classifier. name to classifier.modules_to_save.default
         if verbose:
             print("Loading classifier weights. Renaming classifier weights to classifier.modules_to_save.default.")
@@ -121,10 +122,14 @@ def load_loraxs_weights(model: PeftModel, checkpoint_dir:str, load_classifier: b
                 for k, v in renamed_state_dict.items()
             }
         elif any("lm_head" in k for k in renamed_state_dict.keys()):
-            renamed_state_dict = {
-                k.replace("lm_head", "lm_head.modules_to_save.default"): v
-                for k, v in renamed_state_dict.items()
-            }
+            # In Llama-2-7b, we either don't fine-tune lm_head or we apply LoRA-XS adapters to it.
+            # Only rename non-LoRA lm_head parameters (i.e., modules_to_save)
+            # LoRA parameters (lora_A, lora_B, lora_latent) are already correctly named
+            # renamed_state_dict = {
+            #     k.replace("lm_head", "lm_head.modules_to_save.default") if not any(x in k for x in ["lora_A", "lora_B", "lora_latent"]) else k: v
+            #     for k, v in renamed_state_dict.items()
+            # }
+            pass
         else:
             print(f"No classifier or lm_head found in the checkpoint. Keys in renamed_state_dict: {renamed_state_dict.keys()}")
     # print what keys differ between the model and the checkpoint

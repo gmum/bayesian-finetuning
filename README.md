@@ -20,10 +20,6 @@ To launch a training run locally:
 accelerate launch launch_exp_hydra.py \
 method=swag \
 experiment.task=cola \
-method.force_save=-1 \
-method.swag_start=25 \
-method.swag_anneal_epochs=5 \
-method.swag_learning_rate=1e-3 \
 experiment.learning_rate=1e-3 \
 experiment.cls_learning_rate=5e-3 \
 experiment.num_epochs=100 \

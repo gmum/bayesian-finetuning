@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # Arrays of values to sweep
-tasks=("arc-e") # cola
+tasks=("arc-c" "arc-e" "obqa") # cola
 learning_rates=(5e-4) # (1e-3, 8e-4)
 cls_learning_rates=(5e-4) # (1e-3, 8e-4)
 
-# tasks=("obqa") # obqa, arc-e
-# learning_rates=(1e-3) # (1e-3, 8e-4)
-# cls_learning_rates=(1e-3) # (1e-3, 8e-4)
+# tasks=("arc-e") # obqa, arc-e
+# learning_rates=(5e-4) # (1e-3, 8e-4)
+# cls_learning_rates=(5e-4) # (1e-3, 8e-4)
 
-# tasks=("arc-c") # obqa, arc-e
+# tasks=("obqa" "arc-c") # obqa, arc-e
 # learning_rates=(1e-3) # (1e-3, 8e-4)
 # cls_learning_rates=(1e-3) # (1e-3, 8e-4)
 
 # Freezed version
-# lora_rs=(32 64)
+# lora_rs=(64)
 # # lora_rs=(25 32 48 64)
 # lora_alphas=(25)
 # unfreeze_A=(False)
@@ -25,13 +25,11 @@ lora_rs=(8)
 lora_alphas=(25)
 unfreeze_A=(True)
 unfreeze_B=(True)
+EXTEND_TARGET_MODULES=True # Whether to extend target modules to include o_proj and down_proj for Unfreezed version
 
+ADD_LM_HEAD=False
 
-# seeds=(42 111 333 777) # 2
 seeds=(111 1337 3407)
-# seeds=(111 3407)
-# unfreeze_A=(True)
-# unfreeze_B=(True)
 
 lora_dropouts=(0.0) # (0.0, 0.1)
 lora_weight_decays=(0.1) # (0.01, 0.001)
@@ -52,8 +50,8 @@ for task in "${tasks[@]}"; do
                 for epoch in "${epochs[@]}"; do
                   for unfreeze_A in "${unfreeze_A[@]}"; do
                     for unfreeze_B in "${unfreeze_B[@]}"; do
-                    echo "Submitting: TASK=$task, LORA_R=$lora_r, LORA_ALPHA=$lora_alpha, SEED=$seed, LEARNING_RATE=$learning_rate, CLS_LEARNING_RATE=$cls_learning_rate, LORA_DROPOUT=$lora_dropout, LORA_WEIGHT_DECAY=$lora_weight_decay, CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay, EPOCHS=$epoch, UNFREEZE_A=$unfreeze_A, UNFREEZE_B=$unfreeze_B"
-                    sbatch --export=TASK=$task,LORA_R=$lora_r,LORA_ALPHA=$lora_alpha,SEED=$seed,LEARNING_RATE=$learning_rate,CLS_LEARNING_RATE=$cls_learning_rate,LORA_DROPOUT=$lora_dropout,LORA_WEIGHT_DECAY=$lora_weight_decay,CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay,DO_LAPLACE=$DO_LAPLACE,EPOCHS=$epoch,UNFREEZE_A=$unfreeze_A,UNFREEZE_B=$unfreeze_B run_job.sh
+                    echo "Submitting: TASK=$task, LORA_R=$lora_r, LORA_ALPHA=$lora_alpha, SEED=$seed, LEARNING_RATE=$learning_rate, CLS_LEARNING_RATE=$cls_learning_rate, LORA_DROPOUT=$lora_dropout, LORA_WEIGHT_DECAY=$lora_weight_decay, CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay, EPOCHS=$epoch, UNFREEZE_A=$unfreeze_A, UNFREEZE_B=$unfreeze_B, ADD_LM_HEAD=$ADD_LM_HEAD, EXTEND_TARGET_MODULES=$EXTEND_TARGET_MODULES"
+                    sbatch --export=TASK=$task,LORA_R=$lora_r,LORA_ALPHA=$lora_alpha,SEED=$seed,LEARNING_RATE=$learning_rate,CLS_LEARNING_RATE=$cls_learning_rate,LORA_DROPOUT=$lora_dropout,LORA_WEIGHT_DECAY=$lora_weight_decay,CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay,DO_LAPLACE=$DO_LAPLACE,EPOCHS=$epoch,UNFREEZE_A=$unfreeze_A,UNFREEZE_B=$unfreeze_B,ADD_LM_HEAD=$ADD_LM_HEAD,EXTEND_TARGET_MODULES=$EXTEND_TARGET_MODULES run_job.sh
                     done
                   done
                 done

@@ -1,5 +1,5 @@
 *logs/
-test/
+test/*
 job-*
 logger*
 # Byte-compiled / optimized / DLL files
