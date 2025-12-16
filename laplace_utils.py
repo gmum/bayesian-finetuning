@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import math
 
 from peft.peft_model import PeftModel
@@ -26,6 +26,7 @@ from typing import List
 import wandb
 from utils.eval_utils import compute_nll, compute_ece, get_classification_metrics, compute_metrics
 from loading_utils import load_loraxs_weights
+from utils.peft_utils import WrappedModel
 # from bayesian_lora_utils import evaluate_bayesian_lora
 
 def tensor_metrics_to_float(metrics: dict) -> dict:
@@ -162,27 +163,27 @@ def get_trainer_checkpoints(model_dirs, use_first_last:bool = True):
   
   return checkpoint_dirs
 
-def get_best_metrics_checkpoints(model_dirs, checkpoint_metrics: List[str]):
+def get_best_metrics_checkpoints(model_dirs, best_checkpoint_prefix: str):
   checkpoint_dirs = []
-  if checkpoint_metrics is None:
-    raise ValueError("checkpoint_metrics is None")
-
-  # best checkpoint metrics are saved in directories of the form "{metric_name}-{step}"
-  for metric in checkpoint_metrics:
-    for model_dir in model_dirs:
-      if f"{metric}-" in model_dir:
-        checkpoint_dirs.append(model_dir)
+  # best checkpoint metrics are saved in directories of the form "{best_checkpoint_prefix}{metric_name}-{step}"
+  for model_dir in model_dirs:
+    if best_checkpoint_prefix in model_dir:
+      checkpoint_dirs.append(model_dir)
 
   return checkpoint_dirs
 
 def checkpoints_to_fit(output_dir, 
-                       use_metrics:bool,
-                       checkpoint_metrics: List[str]=None, 
+                       *,
+                       use_best_checkpoints:bool,
+                       use_step_checkpoints:bool,
+                       best_checkpoint_prefix: str="best_eval_", 
                        use_first_last:bool = False, 
                        peft_method="lora_xs"):
     """
     Get the checkpoints to fit Laplace on.
-    
+
+    use_best_checkpoints: bool - whether to use best checkpoints based on metrics
+    use_step_checkpoints: bool - whether to use step checkpoints
     use_first_last: bool - whether to use only first and last checkpoints by steps, applies to LORAXS. 
     For LORAXS first one is the best and last one is the last one.
     """
@@ -195,13 +196,13 @@ def checkpoints_to_fit(output_dir,
             if f"{checkpoint_pref}{step}" in model_dirs:
                 checkpoint_dirs.append(f"{checkpoint_pref}{step}")
     elif peft_method == "lora_xs":
-      if use_metrics:
-        checkpoint_dirs = get_best_metrics_checkpoints(model_dirs, checkpoint_metrics)
-      else:
-        checkpoint_dirs = get_trainer_checkpoints(model_dirs, use_first_last)
+      if use_best_checkpoints:
+        checkpoint_dirs.extend(get_best_metrics_checkpoints(model_dirs, best_checkpoint_prefix))
+      if use_step_checkpoints:
+        checkpoint_dirs.extend(get_trainer_checkpoints(model_dirs, use_first_last))
     
-    if(len(checkpoint_dirs) == 0):
-        raise ValueError("No checkpoints to fit")
+    if len(checkpoint_dirs) == 0:
+        raise ValueError(f"No checkpoints to fit, use_best_checkpoints: {use_best_checkpoints}, use_step_checkpoints: {use_step_checkpoints}")
 
     print(f"Fitting Laplace on the following checkpoints: {checkpoint_dirs}")
     return checkpoint_dirs
@@ -310,6 +311,9 @@ class LaplaceParams:
     # set requires_grad for the model parameters used in Laplace approximation
     self.laplace_weights.update_model(model, self.laplace_weights)
 
+  def get_short_name(self):
+    return f"{self.laplace_weights.name}_{self.hessian_structure.name}"
+
 
 def evaluate_laplace(model,
                      *,
@@ -384,7 +388,7 @@ def evaluate_laplace(model,
 def get_laplace_params(*, 
                        name: Optional[str]=None, 
                        laplace_weights: LaplaceWeights, 
-                       hessian_structure: HessianStructure = HessianStructure.KRON,
+                       hessian_structure: Union[HessianStructure, str] = HessianStructure.KRON,
                        likelihood: Likelihood = Likelihood.CLASSIFICATION,
                        link_approx: LinkApprox = LinkApprox.MC,
                        prior_structure: PriorStructure = PriorStructure.SCALAR,
@@ -392,6 +396,12 @@ def get_laplace_params(*,
                        prediction_kwargs: dict = {"n_samples" : 100000, "joint": True},
                        pred_type: PredType = PredType.GLM,
                        backend=CurvlinopsGGN) -> LaplaceParams:
+    if isinstance(hessian_structure, str):
+      hessian_structure = HessianStructure(hessian_structure)
+    # Use AsdlGGN for FULL and DIAG - CurvlinopsGGN doesn't have efficient diag implementation
+    # For DIAG, CurvlinopsGGN falls back to computing full Jacobians which causes OOM
+    use_asdl = hessian_structure in [HessianStructure.FULL, HessianStructure.DIAG]
+    
     laplace_params = LaplaceParams(
       name="",
       laplace_weights=laplace_weights,
@@ -401,7 +411,7 @@ def get_laplace_params(*,
       link_approx=link_approx,
       prior_optim_method=TuningMethod.MARGLIK,
       prior_structure=prior_structure,
-      backend=AsdlGGN if hessian_structure == HessianStructure.FULL else backend,
+      backend=AsdlGGN if use_asdl else backend,
       prior_kwargs=prior_kwargs,
       prediction_kwargs=prediction_kwargs
     )
@@ -431,7 +441,7 @@ def get_laplace_params(*,
 
 
 def evaluate_laplace_params(
-    model,
+    model : WrappedModel | PeftModel,
     laplace_params_list,
     *,
     prefix,
@@ -450,7 +460,10 @@ def evaluate_laplace_params(
     wandb_run=None,
 ):
     if checkpoint_full_path is not None:
-        load_loraxs_weights(model, checkpoint_full_path, load_classifier=True)
+        if isinstance(model, WrappedModel):
+            load_loraxs_weights(model.get_peft_model(), checkpoint_full_path, load_classifier=True)
+        else:
+            load_loraxs_weights(model, checkpoint_full_path, load_classifier=True)
     else:
         print("No checkpoint provided. Using model as is.")
 
@@ -476,9 +489,25 @@ def evaluate_laplace_params(
             causal_lm=causal_lm,
         )
         base_metrics = tensor_metrics_to_float(base_metrics)
+        # TODO: If there're multiple Laplace methods evaluated, they will be logged under the same metric name. 
+        # Add differentiation for diag and kronecker
         base_metrics = {f"eval_{k}": v for k, v in base_metrics.items()}
         
-        if wandb_run is not None and prefix.startswith("checkpoint"):
+        # Evaluate on test set if available
+        if test_loader is not None and len(test_loader) > 0:
+            test_metrics, _ = compute_metrics(
+                model,
+                test_loader,
+                split="test",
+                method="base",
+                accelerator=accelerator,
+                causal_lm=causal_lm,
+            )
+            test_metrics = tensor_metrics_to_float(test_metrics)
+            test_metrics = {f"test_{k}": v for k, v in test_metrics.items()}
+            base_metrics.update(test_metrics)
+        
+        if wandb_run is not None:
             wandb_run.log({f"{prefix}/base_{key}": value for key, value in base_metrics.items()})
             
             wandb_run.log({f"laplace/base_{key}": value for key, value in base_metrics.items()})
@@ -504,6 +533,7 @@ def evaluate_laplace_params(
                 device=device,
                 train_loader=train_loader,
                 val_loader=val_loader,
+                test_loader=test_loader,
                 num_labels=num_labels,
                 laplace_save_path=None,
                 laplace_params=laplace_params,
@@ -514,9 +544,9 @@ def evaluate_laplace_params(
             with open(json_metrics_full_path, "w") as f:
                 json.dump(total_laplace_metrics, f)
         
-        if wandb_run is not None and prefix.startswith("checkpoint"):
-            wandb_run.log({f"{prefix}/{key}": value for key, value in total_laplace_metrics[full_name].items()})
+        if wandb_run is not None:
+            wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in total_laplace_metrics[full_name].items()})
             
-            wandb_run.log({f"laplace/{key}": value for key, value in total_laplace_metrics[full_name].items()})
+            wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in total_laplace_metrics[full_name].items()})
 
     return total_laplace_metrics

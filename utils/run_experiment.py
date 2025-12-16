@@ -5,12 +5,14 @@ import wandb
 import yaml
 from peft import PromptLearningConfig
 
-from SWAG import SWAG
 import numpy
 import random
+from types import SimpleNamespace
+
+from data import TASK_TYPE_DICT, N_CLASSES_DICT
 
 from loraxs import find_and_initialize
-from train import train_swag
+from train import train_laplace
 from utils.peft_utils import create_peft_model, create_pretrained_model, get_peft_config
 from utils.config_utils import set_save_path
 from data import (
@@ -21,6 +23,8 @@ from data import (
 )
 from accelerate import Accelerator
 # from accelerate import DeepSpeedPlugin
+from utils.peft_utils import WrappedModel
+
 
 
 def run_experiment(config):
@@ -46,8 +50,17 @@ def run_experiment(config):
             config.model.target_modules.extend(
                 ["attention.output.dense", "output.dense"])
         elif "meta-llama" in config.model.model_name:
-            config.model.target_modules.extend(
-                ['k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'])
+            if config.experiment.add_lm_head:
+                config.model.target_modules.extend(['lm_head'])
+            if config.experiment.unfreeze_A or config.experiment.unfreeze_B:
+                if config.experiment.extend_target_modules:
+                    config.model.target_modules.extend(['o_proj', 'down_proj'])
+            else:
+                # LORA-XS case
+                config.model.target_modules.extend(
+                    ['k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'])
+                # # test
+                # config.model.target_modules.extend(['o_proj', 'down_proj'])
         else:
             raise ValueError(f"Model {config.model.model_name} not supported")
 
@@ -89,11 +102,6 @@ def run_experiment(config):
     print("offline loading = ", config.experiment.offline)
 
     ood_dataloader = None
-
-    if  config.experiment.do_laplace and config.method.method_name == "swag":
-        print("***********************WARNING************************")
-        print("Cannot use Laplace with SWAG!")
-        print("***********************WARNING************************")
 
     # Load data
     print("-----------------------Preparing data------------------------")
@@ -247,26 +255,21 @@ def run_experiment(config):
 
         model.print_trainable_parameters()
 
+    if "meta-llama" in config.model.model_name and TASK_TYPE_DICT[config.experiment.task] == "MCQA":
+        # Use WrappedModel instead, that will output only classification logits in form [batch_size, num_classes]
+        model = WrappedModel(model, config.experiment.task, tokenizer)
+
     for param in model.parameters():
         param.data = param.data.contiguous()
 
-    # SWAG
-    if config.method.method_name == "swag":
-        print("----------------------Preparing SWAG----------------------------")
+    # Train base (MAP) and optionally run Laplace
+    if config.method.method_name == "laplace":
 
-        swag_model = SWAG(
+        print("-----------------------TRAIN LAPLACE-----------------------")
+
+        # wandb.run.tags = list(wandb.run.tags) + [f"{len(model.get_peft_model().get_trainable_parameters()) / 1000}K"]
+        train_laplace(
             model,
-            no_cov_mat=not config.method.swag_cov_mat,
-            max_num_models=config.method.swag_max_num_models,
-            modules_to_swag=config.method.modules_to_swag,
-        )
-        swag_model.train()
-
-        wandb.run.tags = list(wandb.run.tags) + [f"{swag_model.lora_params}K"]
-
-        train_swag(
-            model,
-            swag_model,
             train_dataloader,
             eval_dataloader,
             test_dataloader,
@@ -276,11 +279,9 @@ def run_experiment(config):
             num_classes=num_classes,
             peft_config=peft_config,
             ood_dataloader=ood_dataloader,
+            save_checkpoints_at_epochs=config.experiment.save_checkpoints_at_epochs,
         )
-
-        print("--------------------------------------------------------------")
-
     else:
-        raise Exception("Method not implemented")
+        raise Exception("Only 'laplace' method is implemented")
 
     accelerator.end_training()

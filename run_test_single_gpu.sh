@@ -15,6 +15,15 @@
 ml ML-bundle/24.06a
 source .env/bin/activate
 
+# Set envs for distributed training
+export RANK=0
+export LOCAL_RANK=0
+export WORLD_SIZE=1
+export MASTER_ADDR=localhost
+# export MASTER_PORT=29637  # Or another free port
+export MASTER_PORT=$((12000 + RANDOM % 20000))
+export HYDRA_FULL_ERROR=1
+
 echo "A single-GPU test script..."
 
 # CONFIGURATION PARAMETERS:
@@ -26,7 +35,7 @@ SEED=3407
 MODEL="roberta-base"
 
 # optional parameter EPOCHS
-EPOCHS=4
+EPOCHS=6
 
 LEARNING_RATE=1e-3
 CLS_LEARNING_RATE=1e-3
@@ -37,6 +46,8 @@ DO_LAPLACE=True
 LORA_ALPHA=16
 UNFREEZE_A=False
 UNFREEZE_B=False
+ADD_LM_HEAD=False
+EXTEND_TARGET_MODULES=False
 
 RECONSTRUCT_CONFIG="reconstruct_config.yaml"
 # RECONSTRUCT_CONFIG="reconstruct_config_halfdct.yaml"
@@ -65,5 +76,8 @@ torchrun --standalone --nnodes=1 --nproc_per_node=1 launch_exp_hydra.py \
  experiment.lora_weight_decay=$LORA_WEIGHT_DECAY \
  experiment.classifier_weight_decay=$CLASSIFIER_WEIGHT_DECAY \
  experiment.unfreeze_A=$UNFREEZE_A \
- experiment.unfreeze_B=$UNFREEZE_B
+ experiment.unfreeze_B=$UNFREEZE_B \
+ experiment.add_lm_head=$ADD_LM_HEAD \
+ experiment.extend_target_modules=$EXTEND_TARGET_MODULES
+
 

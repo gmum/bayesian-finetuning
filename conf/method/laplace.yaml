@@ -1,0 +1,8 @@
+method_name: "laplace"
+
+# Whether to run post-hoc Laplace approximation on chosen checkpoints
+do_laplace: True
+
+# Laplace parameters (moved from experiment)
+hessian_structure: "kron" # "kron" | "diag" | "full"
+
