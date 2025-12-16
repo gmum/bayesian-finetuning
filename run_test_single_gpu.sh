@@ -17,11 +17,10 @@ if [ -n "${WORKSPACE_DIR}" ]; then
   [[ "${WORKSPACE_DIR}" != */ ]] && WORKSPACE_DIR="${WORKSPACE_DIR}/"
 fi
 
-## Specific for the cluster
+# Specific for the cluster
 ml ML-bundle/24.06a
 echo "USING WORKSPACE_DIR=$WORKSPACE_DIR"
-source $WORKSPACE_DIR.env/bin/activate
-
+source .env/bin/activate
 
 
 # Set envs for distributed training
@@ -69,9 +68,8 @@ torchrun --standalone --nnodes=1 --nproc_per_node=1 launch_exp_hydra.py \
  +reconstruct_config=$RECONSTRUCT_CONFIG \
  +reconstruction_type=$RECONSTRUCT_TYPE \
  model=$MODEL \
- method.force_save=-1 \
  experiment.task=$TASK \
- experiment.do_laplace=$DO_LAPLACE \
+ method.do_laplace=$DO_LAPLACE \
  experiment.learning_rate=$LEARNING_RATE \
  experiment.cls_learning_rate=$CLS_LEARNING_RATE \
  experiment.num_epochs=$EPOCHS \

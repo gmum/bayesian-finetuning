@@ -6,6 +6,7 @@ Our repository is based on
 ## Setup
 Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt).
 Set your workspace directory using `export WORKSPACE_DIR=path`.
+Set `save_folder` and `wandb_path` your WandDB credentials in [conf/config.yaml](conf/config.yaml).
 
 We use Accelerate and Hydra to run our experiments. Accelerate expects the following variables exported to the working environment:
 ```
@@ -25,6 +26,8 @@ To set it up modify wandb entries in [conf/config.yaml](conf/config.yaml).
 
 To use HuggingFace models one needs to `export HF_TOKEN=...` and request access to the models.
 In particular we use `meta-llama/Llama-2-7b-chat-hf`.
+
+The easiest is to set all the exports including `WORKSPACE_DIR`, WandDB API and HF API key in your `.bashrc`.
 
 Test your enviornment on a machine with GPU using [run_test_single_gpu.sh](run_test_single_gpu.sh).
 
