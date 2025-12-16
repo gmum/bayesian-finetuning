@@ -153,6 +153,13 @@ def trim_head_for_mcqa(model, task, peft_config, tokenizer):
         peft_config.modules_to_save.append("lm_head")  # full fine-tuning
 
 
+def create_pretrained_model(
+    config, verbose=False, num_classes=2, tokenizer=None
+):
+    model = create_transformer(config, num_classes)
+    return model
+
+
 def create_peft_model(
     config, peft_config, verbose=False, num_classes=2, tokenizer=None
 ):

@@ -13,7 +13,7 @@ from data import TASK_TYPE_DICT, N_CLASSES_DICT
 
 from loraxs import find_and_initialize
 from train import train_laplace
-from utils.peft_utils import create_peft_model, get_peft_config
+from utils.peft_utils import create_peft_model, create_pretrained_model, get_peft_config
 from utils.config_utils import set_save_path
 from data import (
     load_glue_data,
@@ -36,7 +36,7 @@ def run_experiment(config):
     # accelerator = Accelerator(
     #     split_batches=True, log_with="wandb", deepspeed_plugin=deepspeed_plugin
     # )  # mixed_precision='fp16')
-    
+
     accelerator = Accelerator(
         split_batches=True, log_with="wandb"
     )
@@ -72,7 +72,8 @@ def run_experiment(config):
 
     # Create a descriptive run name
     run_name = f"{model_name}_{task}_{'loraxs' if config.experiment.use_loraxs else 'lora'}_seed{config.experiment.seed}_lr{config.experiment.learning_rate}_cls_lr{config.experiment.cls_learning_rate}_ep{config.experiment.num_epochs}"
-    
+
+    print(f"WANDB: entity:{config.experiment.wandb_entity} group:{wandb_group} tags:{active_tags} name:{run_name}")
     accelerator.init_trackers(
         project_name=config.experiment.wandb_project,
         init_kwargs={
@@ -80,7 +81,7 @@ def run_experiment(config):
                 "entity": config.experiment.wandb_entity,
                 "group": wandb_group,
                 "tags": active_tags,
-                "name": run_name,
+                "name": config.experiment.exp_name + " " + run_name,
             }
         },
     )
@@ -175,13 +176,38 @@ def run_experiment(config):
         if not isinstance(peft_config, PromptLearningConfig):
             peft_config_dict[adapter_name] = peft_config
 
-        with open("conf/reconstruct_config.yaml", "r") as stream:
+        reconstruct_config_filename = config.get("reconstruct_config", "reconstruct_config.yaml")
+        print(f"Loading reconstruct_config from conf/{reconstruct_config_filename}")
+        with open(f"conf/{reconstruct_config_filename}", "r") as stream:
             reconstr_config = yaml.load(stream, Loader=yaml.FullLoader)
-        reconstr_type = reconstr_config["reconstruction_type"]
+        reconstr_type = config.get("reconstruction_type", reconstr_config["reconstruction_type"])
+        if reconstr_type not in reconstr_config:
+            print(f"WARNING: No specific config for reconstruction type = {reconstr_type} found!")
+            reconstr_config[reconstr_type] = {}  # Empty config if nothing overridden
         reconstr_config[reconstr_type]["rank"] = peft_config_dict[adapter_name].r
         print("XS-RANK ", peft_config_dict[adapter_name].r)
 
         print("LORA-XS MODE ", config.experiment.loraxs_mode)
+
+        ##########################################################################
+        if "cca" in reconstr_type:
+            print("Precomputing layers input covariances for CCA")
+            pretrained_model = create_pretrained_model(
+                config, num_classes=num_classes, tokenizer=tokenizer
+            )
+            if torch.cuda.device_count() > 0:
+                pretrained_model = pretrained_model.to("cuda")
+
+            import cca_projections
+            cca_projections.precompute_covariances(
+                pretrained_model=pretrained_model,
+                target_modules=config.model.target_modules,
+                dataloader=train_dataloader,
+                max_steps=10,
+            )
+
+            cca_projections.move_covariances_to_cpu()
+        ##########################################################################
 
         find_and_initialize(
             model,

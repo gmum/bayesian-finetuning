@@ -57,12 +57,21 @@ echo "UNFREEZE_A: $UNFREEZE_A"
 echo "UNFREEZE_B: $UNFREEZE_B"
 echo "ADD_LM_HEAD: $ADD_LM_HEAD"
 echo "EXTEND_TARGET_MODULES: $EXTEND_TARGET_MODULES"
+
+# WORKSPACE_DIR is set and not empty, ensure it ends with /
+if [ -n "${WORKSPACE_DIR}" ]; then
+  [[ "${WORKSPACE_DIR}" != */ ]] && WORKSPACE_DIR="${WORKSPACE_DIR}/"
+fi
+
+## Specific for the cluster
 ml ML-bundle/24.06a
+echo "USING WORKSPACE_DIR=$WORKSPACE_DIR"
+source $WORKSPACE_DIR.env/bin/activate
 
 export HYDRA_FULL_ERROR=1
 
 # source $SCRATCH/bloraxs/bin/activate
-source $GRANT_DIR/bloraxs/bin/activate    
+# source $GRANT_DIR/bloraxs/bin/activate    
 # list all the modules installed
 # pip list
 
