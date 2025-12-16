@@ -11,9 +11,18 @@
 #SBATCH --output=test1gpu-%j.out
 #SBATCH --error=test1gpu-%j.err
 
-##Specific for the cluster
+
+# WORKSPACE_DIR is set and not empty, ensure it ends with /
+if [ -n "${WORKSPACE_DIR}" ]; then
+  [[ "${WORKSPACE_DIR}" != */ ]] && WORKSPACE_DIR="${WORKSPACE_DIR}/"
+fi
+
+## Specific for the cluster
 ml ML-bundle/24.06a
-source .env/bin/activate
+echo "USING WORKSPACE_DIR=$WORKSPACE_DIR"
+source $WORKSPACE_DIR.env/bin/activate
+
+
 
 # Set envs for distributed training
 export RANK=0
