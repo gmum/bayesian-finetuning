@@ -6,7 +6,7 @@ Our repository is based on
 ## Setup
 Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt).
 Set your workspace directory using `export WORKSPACE_DIR=path`.
-Set `save_folder` and `wandb_path` your WandDB credentials in [conf/config.yaml](conf/config.yaml).
+Set `save_folder`, `wandb_path` and other WandDB settings in [conf/config.yaml](conf/config.yaml).
 
 We use Accelerate and Hydra to run our experiments. Accelerate expects the following variables exported to the working environment:
 ```
