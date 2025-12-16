@@ -37,6 +37,9 @@ def run_experiment(config):
     #     split_batches=True, log_with="wandb", deepspeed_plugin=deepspeed_plugin
     # )  # mixed_precision='fp16')
 
+    print("------------------------------------START-------------------------")
+    print(f"[run_experiment] config = {config}")
+
     accelerator = Accelerator(
         split_batches=True, log_with="wandb"
     )
