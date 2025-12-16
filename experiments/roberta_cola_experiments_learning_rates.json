@@ -1,0 +1,42 @@
+{
+  "id": "$FILE_$DATE_roberta_cola",
+  "predefined_configs": [
+    {
+      "name": "low",
+      "LEARNING_RATE": 1e-5,
+      "CLS_LEARNING_RATE": 1e-5
+    },
+    {
+      "name": "mid",
+      "LEARNING_RATE": 1e-4,
+      "CLS_LEARNING_RATE": 1e-4
+    },
+    {
+      "name": "high",
+      "LEARNING_RATE": 1e-3,
+      "CLS_LEARNING_RATE": 1e-3
+    },
+    {
+      "name": "mixed1",
+      "LEARNING_RATE": 1e-3,
+      "CLS_LEARNING_RATE": 1e-5
+    },    
+    {
+      "name": "mixed2",
+      "LEARNING_RATE": 1e-4,
+      "CLS_LEARNING_RATE": 1e-5
+    }    
+  ],
+  "grid_search_REMOVE_THIS_TO_ENABLE": {
+    "LEARNING_RATE": [
+      1e-5,
+      1e-4,
+      1e-3
+    ],
+    "CLS_LEARNING_RATE": [
+      1e-5,
+      1e-4,
+      1e-3
+    ]
+  }
+}
