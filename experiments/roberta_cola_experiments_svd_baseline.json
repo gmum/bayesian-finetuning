@@ -1,0 +1,36 @@
+{
+  "id": "$FILE_$DATE_roberta_cola",
+  "output_dir": "experiments_cola_svd_baseline",
+  "output_prefix": "expbase",
+  "grid_search": {
+    "SEED": [
+      111,
+      1337,
+      3407
+    ],
+    "RECONSTRUCT_TYPE": [
+      "svd"
+    ],
+    "LEARNING_RATE": [
+      0.001
+    ],
+    "CLS_LEARNING_RATE": [
+      0.005
+    ],
+    "LORA_R": [
+      8
+    ],
+    "LORA_ALPHA": [
+      16
+    ],
+    "LORA_DROPOUT": [
+      0.0
+    ],
+    "LORA_WEIGHT_DECAY": [
+      0.01
+    ],
+    "CLASSIFIER_WEIGHT_DECAY": [
+      0.01
+    ]
+  }
+}
