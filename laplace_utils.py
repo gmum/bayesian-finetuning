@@ -357,6 +357,13 @@ def evaluate_laplace(model,
       "nl_marglik" : -la.log_marginal_likelihood().item()
   }
   print(f"Negative log marginal likelihood: {total_metrics['nl_marglik']}")
+
+  try:
+    print(f"Prior precision: {la.prior_precision}")
+    total_metrics["prior_precision"] = la.prior_precision.item()
+  except Exception as e:
+    print(f"Error getting prior precision: {e}")
+
   if val_loader:
     val_metrics = evaluate_linearized_prediction(val_loader, "eval_", la, device, laplace_params.pred_type, laplace_params.link_approx, num_labels, prediction_kwargs=laplace_params.prediction_kwargs)
     total_metrics.update(val_metrics)
