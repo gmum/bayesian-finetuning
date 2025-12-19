@@ -591,7 +591,8 @@ def main():
             es.write(
                 f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             )
-            es.write(f"# Identifier: '{config["id"]}'\n")
+            cfg_id = config["id"]
+            es.write(f"# Identifier: '{cfg_id}'\n")
             es.write(f"# Total files: {len(generated_files)}\n\n")
 
             for (
