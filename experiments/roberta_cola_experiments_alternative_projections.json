@@ -1,0 +1,43 @@
+{
+  "id": "$FILE_$DATE_roberta_cola",
+  "output_dir": "experiments_cola_alternative_projections",
+  "output_prefix": "exprj",
+  "grid_search": {
+    "SEED": [
+      111,
+      1337,
+      3407
+    ],
+    "RECONSTRUCT_TYPE": [
+      "dct",
+      "dct-1/2_svd",
+      "cca",
+      "cca-1/2_svd",
+      "finder",
+      "finder-1/2_svd",
+      "random",
+      "random-1/2_svd"
+    ],
+    "LEARNING_RATE": [
+      0.001
+    ],
+    "CLS_LEARNING_RATE": [
+      0.005
+    ],
+    "LORA_R": [
+      8
+    ],
+    "LORA_ALPHA": [
+      16
+    ],
+    "LORA_DROPOUT": [
+      0.0
+    ],
+    "LORA_WEIGHT_DECAY": [
+      0.01
+    ],
+    "CLASSIFIER_WEIGHT_DECAY": [
+      0.01
+    ]
+  }
+}
