@@ -20,7 +20,7 @@ fi
 # Specific for the cluster
 ml ML-bundle/24.06a
 echo "USING WORKSPACE_DIR=$WORKSPACE_DIR"
-source .env/bin/activate
+source $WORKSPACE_DIR.env/bin/activate
 
 
 # Set envs for distributed training
