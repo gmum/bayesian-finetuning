@@ -176,7 +176,7 @@ def checkpoints_to_fit(output_dir,
                        *,
                        use_best_checkpoints:bool,
                        use_step_checkpoints:bool,
-                       best_checkpoint_prefix: str="best_eval_", 
+                       best_checkpoint_prefix: str="best_", 
                        use_first_last:bool = False, 
                        peft_method="lora_xs"):
     """
@@ -186,6 +186,11 @@ def checkpoints_to_fit(output_dir,
     use_step_checkpoints: bool - whether to use step checkpoints
     use_first_last: bool - whether to use only first and last checkpoints by steps, applies to LORAXS. 
     For LORAXS first one is the best and last one is the last one.
+    
+    If you defined custom metrics in metrics_to_save in train.py, they will be saved with 
+    directory names like "{best_checkpoint_prefix}{metric_name}-{epoch}".
+    This function retrieves all such checkpoints if use_best_checkpoints is True,
+    provided they start with best_checkpoint_prefix.
     """
     model_dirs = os.listdir(output_dir)
     checkpoint_dirs = []
@@ -465,6 +470,7 @@ def evaluate_laplace_params(
     accelerator=None,
     causal_lm=False,
     wandb_run=None,
+    epoch=None,
 ):
     if checkpoint_full_path is not None:
         if isinstance(model, WrappedModel):
@@ -496,8 +502,6 @@ def evaluate_laplace_params(
             causal_lm=causal_lm,
         )
         base_metrics = tensor_metrics_to_float(base_metrics)
-        # TODO: If there're multiple Laplace methods evaluated, they will be logged under the same metric name. 
-        # Add differentiation for diag and kronecker
         base_metrics = {f"eval_{k}": v for k, v in base_metrics.items()}
         
         # Evaluate on test set if available
@@ -552,6 +556,8 @@ def evaluate_laplace_params(
                 json.dump(total_laplace_metrics, f)
         
         if wandb_run is not None:
+            # TODO: If there're multiple Laplace methods evaluated with the same get_short_name(),
+            # they will be logged under the same metric name.
             wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in total_laplace_metrics[full_name].items()})
             
             wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in total_laplace_metrics[full_name].items()})

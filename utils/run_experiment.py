@@ -268,7 +268,7 @@ def run_experiment(config):
     # Train base (MAP) and optionally run Laplace
     if config.method.method_name == "laplace":
 
-        print("-----------------------TRAIN LAPLACE-----------------------")
+        print("-----------------------TRAIN LAPLACE: MAP + HESSIANS-----------------------")
 
         # wandb.run.tags = list(wandb.run.tags) + [f"{len(model.get_peft_model().get_trainable_parameters()) / 1000}K"]
         train_laplace(

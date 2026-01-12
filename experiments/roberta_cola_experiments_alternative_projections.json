@@ -16,7 +16,8 @@
       "finder",
       "finder-1/2_svd",
       "random",
-      "random-1/2_svd"
+      "random-1/2_svd",
+      "svd"
     ],
     "LEARNING_RATE": [
       0.001

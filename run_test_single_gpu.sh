@@ -44,6 +44,7 @@ MODEL="roberta-base"
 
 # optional parameter EPOCHS
 EPOCHS=6
+CHECKPOINT_EPOCHS="[2,4]"
 
 LEARNING_RATE=1e-3
 CLS_LEARNING_RATE=1e-3
@@ -85,6 +86,5 @@ torchrun --standalone --nnodes=1 --nproc_per_node=1 launch_exp_hydra.py \
  experiment.unfreeze_A=$UNFREEZE_A \
  experiment.unfreeze_B=$UNFREEZE_B \
  experiment.add_lm_head=$ADD_LM_HEAD \
- experiment.extend_target_modules=$EXTEND_TARGET_MODULES
-
-
+ experiment.extend_target_modules=$EXTEND_TARGET_MODULES \
+ experiment.save_checkpoints_at_epochs=$CHECKPOINT_EPOCHS

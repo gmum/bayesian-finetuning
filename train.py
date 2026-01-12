@@ -11,7 +11,8 @@ import wandb
 from utils.peft_utils import load_peft_model
 import json
 import accelerate
-from utils.eval_utils import evaluate_task, compute_metrics, ood_metrics_entropy
+import torch.nn.functional as F
+from utils.eval_utils import evaluate_task, compute_metrics, ood_metrics_entropy, compute_nll, compute_ece
 import shutil
 
 from utils.peft_utils import get_id_list
@@ -127,10 +128,11 @@ def get_lr_scheduler(optimizer, num_batches, config):
 def save_best_metric_checkpoint(
     model,
     metrics_to_save,
-    eval_metrics,
+    all_metrics,
     epoch,
     save_path,
     best_checkpoint_prefix,
+    wandb_run=None,
 ):
     """
     Save checkpoint if current metric is the best so far, and remove old checkpoint.
@@ -141,7 +143,8 @@ def save_best_metric_checkpoint(
             {metric_name: {"best_metric_val": float/None, 
                           "saved_epoch": int/None, 
                           "is_greater_better": bool}}
-        eval_metrics: Dict of current evaluation metrics
+        all_metrics: Dict of all current metrics (evaluation and training). 
+            Should contain keys matching metric_name in metrics_to_save.
         epoch: Current epoch number
         save_path: Base directory to save checkpoints
         best_checkpoint_prefix: Prefix for best checkpoint directory names
@@ -153,7 +156,11 @@ def save_best_metric_checkpoint(
         return f'{best_checkpoint_prefix}{metric_name}-{metric_step}'
     
     for metric_name, metric_info in metrics_to_save.items():
-        cur_metric_val = eval_metrics[metric_name]
+        if metric_name not in all_metrics:
+            print(f"Warning: {metric_name} not found in metrics dictionary. Skipping checkpoint saving for this metric.")
+            continue
+            
+        cur_metric_val = all_metrics[metric_name]
         
         # Convert tensor to float if needed
         if isinstance(cur_metric_val, torch.Tensor):
@@ -164,6 +171,12 @@ def save_best_metric_checkpoint(
             (metric_info["is_greater_better"] and cur_metric_val > metric_info["best_metric_val"]) or \
             (not metric_info["is_greater_better"] and cur_metric_val < metric_info["best_metric_val"]):
             
+
+            save_prefix = f"{best_checkpoint_prefix}{metric_name}"
+            if wandb_run is not None:
+                wandb_run.log({f"{save_prefix}/value": cur_metric_val})
+                wandb_run.log({f"{save_prefix}/epoch": epoch})
+                
             metrics_to_save[metric_name]["best_metric_val"] = cur_metric_val
             previous_epoch = metrics_to_save[metric_name]["saved_epoch"]
             metrics_to_save[metric_name]["saved_epoch"] = epoch
@@ -214,16 +227,32 @@ def train_laplace(
     print("save_path in train_laplace is:", save_path)
     print("Base learning rate: ", config.experiment.learning_rate)
 
-    metric_to_optimize = "mcc" if config.experiment.task == "cola" else "acc"
+    metric_to_optimize = "eval_mcc" if config.experiment.task == "cola" else "eval_acc"
 
-    best_checkpoint_prefix = f"best_eval_"
+    best_checkpoint_prefix = f"best_"
     # Initialize metric tracking for best checkpoint saving
+    # To save checkpoints based on other metrics (e.g. train_loss), add them here.
+    # Ensure the metric key exists in all_metrics passed to save_best_metric_checkpoint.
+    # To add your own metric:
+    # 1. Add it to metrics_to_save dict below
+    # 2. Ensure it is available in all_metrics in the training loop (lines ~450)
+    # Example:
+    # metrics_to_save["train_loss"] = {
+    #     "best_metric_val": None,
+    #     "saved_epoch": None,
+    #     "is_greater_better": False
+    # }
     metrics_to_save = {
         metric_to_optimize: {
             "best_metric_val": None,
             "saved_epoch": None,
             "is_greater_better": True
-        }
+        },
+        # "train_loss": {
+        #     "best_metric_val": None,
+        #     "saved_epoch": None,
+        #     "is_greater_better": False
+        # }
     }
 
     print(f"Metric to optimize: {metric_to_optimize}")
@@ -303,7 +332,7 @@ def train_laplace(
         "time",
     ]
     print("")
-    print("-------------------------START TRAINING-------------------------")
+    print("-------------------------START MAP TRAINING-------------------------")
 
     if min(save_checkpoints_at_epochs) >= num_epochs:
         raise Exception(f"No checkpoints will be saved, all specified epochs exceed num_epochs: "
@@ -332,6 +361,7 @@ def train_laplace(
                                  device=accelerator.device)
         all_labels = torch.tensor(
             [], dtype=torch.long, device=accelerator.device)
+        all_probs_list = []
 
         correct = torch.tensor(0, dtype=torch.long, device=accelerator.device)
         total = torch.tensor(0, dtype=torch.long, device=accelerator.device)
@@ -360,6 +390,9 @@ def train_laplace(
                 preds = logits.argmax(axis=-1)
                 all_preds = torch.cat((all_preds, preds), dim=0)
                 all_labels = torch.cat((all_labels, batch["labels"]), dim=0)
+                
+                probs = F.softmax(logits, dim=-1)
+                all_probs_list.append(probs)
 
                 correct += preds.eq(batch["labels"].view_as(preds)).sum()
                 total += len(batch["labels"])
@@ -392,8 +425,18 @@ def train_laplace(
         collected_correct = collected_correct.sum().item()
         collected_total = collected_total.sum().item()
         train_acc = 0
+        train_nll = 0
+        train_ece = 0
+
+        all_probs = torch.cat(all_probs_list, dim=0)
+        
+        collected_all_probs = accelerator.gather_for_metrics(all_probs)
+        collected_all_labels = accelerator.gather_for_metrics(all_labels)
+        
         if accelerator.is_main_process:
             train_acc = collected_correct / collected_total
+            train_nll = compute_nll(collected_all_probs, collected_all_labels)
+            train_ece = compute_ece(collected_all_probs, collected_all_labels)
         accelerator.wait_for_everyone()
 
         eval_metrics, _ = compute_metrics(
@@ -407,10 +450,7 @@ def train_laplace(
         
         eval_metrics = tensor_metrics_to_float(eval_metrics)
 
-        wandb_log_metrics = {f"eval_{k}": v for k, v in eval_metrics.items()}
-        wandb.log(wandb_log_metrics)
-        
-
+        # Report training metrics for epoch
         counter += 1
         
         global_step += 1
@@ -424,14 +464,28 @@ def train_laplace(
         if accelerator.is_main_process:
             unwrapped_model = accelerator.unwrap_model(model)
             
+            # Combine metrics for checkpoint saving
+            # To add your own metric, add it to this dictionary
+            all_metrics = {f"eval_{k}": v for k, v in eval_metrics.items()}
+            all_metrics.update({
+                "train_acc": train_acc,
+                "train_loss": train_loss,
+                "train_nll": train_nll,
+                "train_ece": train_ece,
+                "epoch": epoch,
+            })
+
+            wandb.log({f"all_metrics/{k}": v for k, v in all_metrics.items()})
+            
             # Save best metric checkpoint (accuracy)
             metrics_to_save = save_best_metric_checkpoint(
                 unwrapped_model,
                 metrics_to_save,
-                eval_metrics,
+                all_metrics,
                 epoch,
                 save_path,
-                best_checkpoint_prefix=best_checkpoint_prefix
+                best_checkpoint_prefix=best_checkpoint_prefix,
+                wandb_run=wandb.run
             )
             
             if config.method.do_laplace:
@@ -461,7 +515,7 @@ def train_laplace(
 
         accelerator.wait_for_everyone()
 
-    print("-------------------------END OF TRAINING-------------------------")
+    print("-------------------------END OF MAP TRAINING-------------------------")
 
     if accelerator.is_main_process:
         counter += 1
@@ -486,7 +540,7 @@ def train_laplace(
     
     # Post-hoc Laplace approximation on chosen checkpoints
     if config.method.do_laplace:
-        print("-------------------------POST-HOC LAPLACE-------------------------")
+        print("-------------------------POST-HOC LAPLACE HESSIANS-------------------------")
         print(f"GPU memory allocated: {torch.cuda.memory_allocated(device=accelerator.device) / 1024**3:.2f} GB")
         print(f"GPU memory reserved: {torch.cuda.memory_reserved(device=accelerator.device) / 1024**3:.2f} GB")
         print("Post-hoc Laplace approximation on chosen checkpoints")
@@ -545,6 +599,9 @@ def train_laplace(
                 # Remove step from checkpoint name so that it gets saved to wandb correctly
                 # Use rsplit to only remove the last part (epoch number) after the final "-"
                 prefix = checkpoint.rsplit("-", 1)[0]
+                epoch = int(checkpoint.rsplit("-", 1)[1])
+
+            print(f"Evaluating Laplace parameters on checkpoint: {checkpoint} at epoch {epoch}")
 
             total_laplace_metrics.update(evaluate_laplace_params(
                 unwrapped_model,
@@ -560,7 +617,8 @@ def train_laplace(
                 json_metrics_path=save_path,
                 accelerator=accelerator,
                 causal_lm=causal_lm,
-                wandb_run=wandb.run
+                wandb_run=wandb.run,
+                epoch=epoch
             ))
             
         print(f"Total laplace metrics: {total_laplace_metrics}")
