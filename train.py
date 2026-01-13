@@ -589,7 +589,7 @@ def train_laplace(
             unwrapped_model = accelerator.unwrap_model(model)   
             checkpoint_full_path = os.path.join(save_path, checkpoint)
 
-            prefix = checkpoint
+            prefix, epoch = checkpoint, -1
             if best_checkpoint_prefix in checkpoint:
                 # Remove step from checkpoint name so that it gets saved to wandb correctly
                 # Use rsplit to only remove the last part (epoch number) after the final "-"
