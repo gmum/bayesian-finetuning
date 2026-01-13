@@ -480,17 +480,17 @@ def evaluate_laplace_params(
     else:
         print("No checkpoint provided. Using model as is.")
 
-    total_laplace_metrics = {}
+    metrics = {}
     json_metrics_full_path = None
     if json_metrics_path is not None:
         json_metrics_full_path = os.path.join(json_metrics_path, json_metric_file)
 
     if json_metrics_full_path is not None and os.path.exists(json_metrics_full_path):
         with open(json_metrics_full_path, "r") as f:
-            total_laplace_metrics = json.load(f)
+            metrics = json.load(f)
 
     base_name = f"{prefix}_base"
-    if base_name in total_laplace_metrics:
+    if base_name in metrics:
         print(f"{base_name} already evaluated")
     else:
         base_metrics, _ = compute_metrics(
@@ -520,26 +520,26 @@ def evaluate_laplace_params(
         
         if wandb_run is not None:
             wandb_run.log({f"{prefix}/base_{key}": value for key, value in base_metrics.items()})
-            
             wandb_run.log({f"laplace/base_{key}": value for key, value in base_metrics.items()})
+
         
-        total_laplace_metrics[base_name] = base_metrics
-        total_laplace_metrics[base_name]["nl_marglik"] = 0
-        total_laplace_metrics[base_name]["name"] = f"{prefix}_base"
+        metrics[base_name] = base_metrics
+        metrics[base_name]["nl_marglik"] = 0
+        metrics[base_name]["name"] = f"{prefix}_base"
 
     for laplace_params in laplace_params_list:
         print(f"laplace_params: {laplace_params}")
         method_name = laplace_params.name
         full_name = f"{prefix}_{method_name}"
-        if full_name in total_laplace_metrics:
+        if full_name in metrics:
             print(f"{full_name} already evaluated")
         elif test_run:
-            total_laplace_metrics[full_name] = {"name": f"{prefix}_{method_name}"}
-            for key in total_laplace_metrics[base_name].keys():
+            metrics[full_name] = {"name": f"{prefix}_{method_name}"}
+            for key in metrics[base_name].keys():
                 if key != "name":
-                    total_laplace_metrics[full_name][key] = 0.0
+                    metrics[full_name][key] = 0.0
         else:
-            total_laplace_metrics[full_name] = evaluate_laplace(
+            metrics[full_name] = evaluate_laplace(
                 model,
                 device=device,
                 train_loader=train_loader,
@@ -549,17 +549,18 @@ def evaluate_laplace_params(
                 laplace_save_path=None,
                 laplace_params=laplace_params,
             )
-            total_laplace_metrics[full_name] = tensor_metrics_to_float(total_laplace_metrics[full_name])
-            total_laplace_metrics[full_name]["name"] = f"{prefix}_{method_name}"
+            metrics[full_name] = tensor_metrics_to_float(metrics[full_name])
+            metrics[full_name]["name"] = f"{prefix}_{method_name}"
+            metrics[full_name]["epoch"] = epoch
         if json_metrics_full_path is not None:
             with open(json_metrics_full_path, "w") as f:
-                json.dump(total_laplace_metrics, f)
+                json.dump(metrics, f)
         
         if wandb_run is not None:
             # TODO: If there're multiple Laplace methods evaluated with the same get_short_name(),
             # they will be logged under the same metric name.
-            wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in total_laplace_metrics[full_name].items()})
+            wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in metrics[full_name].items()})
             
-            wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in total_laplace_metrics[full_name].items()})
+            wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in metrics[full_name].items()})
 
-    return total_laplace_metrics
+    return metrics

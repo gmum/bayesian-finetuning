@@ -248,11 +248,6 @@ def train_laplace(
             "saved_epoch": None,
             "is_greater_better": True
         },
-        # "train_loss": {
-        #     "best_metric_val": None,
-        #     "saved_epoch": None,
-        #     "is_greater_better": False
-        # }
     }
 
     print(f"Metric to optimize: {metric_to_optimize}")
@@ -585,7 +580,7 @@ def train_laplace(
         print("-------------------------LAPLACE EVALUATION-------------------------")
         print(f"Evaluating Laplace parameters on checkpoints: {checkpoints_list} from save_path={save_path}")
 
-        total_laplace_metrics = {}
+        laplace_metrics_on_checkpoints = {}
         for checkpoint in checkpoints_list:
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
@@ -603,7 +598,7 @@ def train_laplace(
 
             print(f"Evaluating Laplace parameters on checkpoint: {checkpoint} at epoch {epoch}")
 
-            total_laplace_metrics.update(evaluate_laplace_params(
+            checkpoint_metrics = evaluate_laplace_params(
                 unwrapped_model,
                 laplace_params_list,
                 prefix=prefix,
@@ -619,11 +614,12 @@ def train_laplace(
                 causal_lm=causal_lm,
                 wandb_run=wandb.run,
                 epoch=epoch
-            ))
+            )
+            laplace_metrics_on_checkpoints.update(checkpoint_metrics)
             
-        print(f"Total laplace metrics: {total_laplace_metrics}")
+        print(f"Laplace metrics for all checkpoints: {laplace_metrics_on_checkpoints}")
         
-        laplace_metrics_df = pd.DataFrame.from_dict(total_laplace_metrics, orient="index").reset_index()
+        laplace_metrics_df = pd.DataFrame.from_dict(laplace_metrics_on_checkpoints, orient="index").reset_index()
         laplace_metrics_df.to_csv(os.path.join(save_path, "new_laplace_metrics.csv"), index=False)
         wandb.log({"laplace/metrics_df": wandb.Table(dataframe=laplace_metrics_df)})
         print("Successfully finished.")
