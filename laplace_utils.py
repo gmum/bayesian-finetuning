@@ -561,6 +561,9 @@ def evaluate_laplace_params(
             # they will be logged under the same metric name.
             wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in metrics[full_name].items()})
             
+            for key, value in metrics[full_name].items():
+                wandb_run.log( {f"serie_{laplace_params.get_short_name()}/{key}": value, "step": epoch, "epoch": epoch} )
+
             wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in metrics[full_name].items()})
 
     return metrics

@@ -578,30 +578,31 @@ def train_laplace(
                                               best_checkpoint_prefix=best_checkpoint_prefix) # "eval_comb_score", "eval_nll", "eval_acc"
 
         print("-------------------------LAPLACE EVALUATION-------------------------")
+
+        extract_epoch = lambda ckpt_name: int(ckpt_name.rsplit("-", 1)[1])
+        # Drop repeated epoch names & sort checkpoints based on epoch number extracted from the name
+        epoch2ckpt = {}
+        for ckpt in checkpoints_list:
+            epoch = extract_epoch(ckpt)
+            if (epoch not in epoch2ckpt) or (epoch in epoch2ckpt and not "best" in ckpt):  # prefer non-best checkpoints if duplicate epoch
+                epoch2ckpt[extract_epoch(ckpt)] = ckpt
+        checkpoints_list = [epoch2ckpt[ep] for ep in sorted(epoch2ckpt.keys())]
         print(f"Evaluating Laplace parameters on checkpoints: {checkpoints_list} from save_path={save_path}")
 
         laplace_metrics_on_checkpoints = {}
         for checkpoint in checkpoints_list:
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
-            
 
             unwrapped_model = accelerator.unwrap_model(model)   
             checkpoint_full_path = os.path.join(save_path, checkpoint)
 
-            prefix, epoch = checkpoint, -1
-            if best_checkpoint_prefix in checkpoint:
-                # Remove step from checkpoint name so that it gets saved to wandb correctly
-                # Use rsplit to only remove the last part (epoch number) after the final "-"
-                prefix = checkpoint.rsplit("-", 1)[0]
-                epoch = int(checkpoint.rsplit("-", 1)[1])
-
-            print(f"Evaluating Laplace parameters on checkpoint: {checkpoint} at epoch {epoch}")
+            print(f"Evaluating Laplace parameters on checkpoint: {checkpoint}")
 
             checkpoint_metrics = evaluate_laplace_params(
                 unwrapped_model,
                 laplace_params_list,
-                prefix=prefix if prefix.startswith("checkpoint") else f"checkpoint_{prefix}",
+                prefix=checkpoint if checkpoint.startswith("checkpoint") else f"checkpoint_{checkpoint}",
                 checkpoint_full_path=checkpoint_full_path,
                 device=accelerator.device,
                 num_labels=num_classes,
@@ -613,7 +614,7 @@ def train_laplace(
                 accelerator=accelerator,
                 causal_lm=causal_lm,
                 wandb_run=wandb.run,
-                epoch=epoch
+                epoch=extract_epoch(checkpoint)
             )
             laplace_metrics_on_checkpoints.update(checkpoint_metrics)
             
