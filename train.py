@@ -128,7 +128,7 @@ def get_lr_scheduler(optimizer, num_batches, config):
 def save_best_metric_checkpoint(
     model,
     metrics_to_save,
-    all_metrics,
+    map_metrics,
     epoch,
     save_path,
     best_checkpoint_prefix,
@@ -143,7 +143,7 @@ def save_best_metric_checkpoint(
             {metric_name: {"best_metric_val": float/None, 
                           "saved_epoch": int/None, 
                           "is_greater_better": bool}}
-        all_metrics: Dict of all current metrics (evaluation and training). 
+        map_metrics: Dict of all current metrics (evaluation and training). 
             Should contain keys matching metric_name in metrics_to_save.
         epoch: Current epoch number
         save_path: Base directory to save checkpoints
@@ -156,11 +156,11 @@ def save_best_metric_checkpoint(
         return f'{best_checkpoint_prefix}{metric_name}-{metric_step}'
     
     for metric_name, metric_info in metrics_to_save.items():
-        if metric_name not in all_metrics:
+        if metric_name not in map_metrics:
             print(f"Warning: {metric_name} not found in metrics dictionary. Skipping checkpoint saving for this metric.")
             continue
             
-        cur_metric_val = all_metrics[metric_name]
+        cur_metric_val = map_metrics[metric_name]
         
         # Convert tensor to float if needed
         if isinstance(cur_metric_val, torch.Tensor):
@@ -461,8 +461,8 @@ def train_laplace(
             
             # Combine metrics for checkpoint saving
             # To add your own metric, add it to this dictionary
-            all_metrics = {f"eval_{k}": v for k, v in eval_metrics.items()}
-            all_metrics.update({
+            map_metrics = {f"eval_{k}": v for k, v in eval_metrics.items()}
+            map_metrics.update({
                 "train_acc": train_acc,
                 "train_loss": train_loss,
                 "train_nll": train_nll,
@@ -470,13 +470,13 @@ def train_laplace(
                 "epoch": epoch,
             })
 
-            wandb.log({f"all_metrics/{k}": v for k, v in all_metrics.items()})
+            wandb.log({f"map_metrics/{k}": v for k, v in map_metrics.items()})
             
             # Save best metric checkpoint (accuracy)
             metrics_to_save = save_best_metric_checkpoint(
                 unwrapped_model,
                 metrics_to_save,
-                all_metrics,
+                map_metrics,
                 epoch,
                 save_path,
                 best_checkpoint_prefix=best_checkpoint_prefix,
@@ -601,7 +601,7 @@ def train_laplace(
             checkpoint_metrics = evaluate_laplace_params(
                 unwrapped_model,
                 laplace_params_list,
-                prefix=prefix,
+                prefix=prefix if prefix.startswith("checkpoint") else f"checkpoint_{prefix}",
                 checkpoint_full_path=checkpoint_full_path,
                 device=accelerator.device,
                 num_labels=num_classes,
