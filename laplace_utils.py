@@ -469,7 +469,7 @@ def evaluate_laplace_params(
     test_run=False,
     accelerator=None,
     causal_lm=False,
-    wandb_run=None,
+    wandb=None,
     epoch=None,
 ):
     if checkpoint_full_path is not None:
@@ -518,10 +518,10 @@ def evaluate_laplace_params(
             test_metrics = {f"test_{k}": v for k, v in test_metrics.items()}
             base_metrics.update(test_metrics)
         
-        if wandb_run is not None:
-            wandb_run.log({f"{prefix}/base_{key}": value for key, value in base_metrics.items()})
-            wandb_run.log({f"laplace/base_{key}": value for key, value in base_metrics.items()})
-
+        if wandb is not None:
+            # wandb.log({f"{prefix}/base_{key}": value for key, value in base_metrics.items()})
+            base_metrics["epoch"] = epoch
+            wandb.log({f"laplace/base_{key}": value for key, value in base_metrics.items()})
         
         metrics[base_name] = base_metrics
         metrics[base_name]["nl_marglik"] = 0
@@ -552,18 +552,18 @@ def evaluate_laplace_params(
             metrics[full_name] = tensor_metrics_to_float(metrics[full_name])
             metrics[full_name]["name"] = f"{prefix}_{method_name}"
             metrics[full_name]["epoch"] = epoch
+            
         if json_metrics_full_path is not None:
             with open(json_metrics_full_path, "w") as f:
                 json.dump(metrics, f)
         
-        if wandb_run is not None:
+        if wandb is not None:
+            # Create a separate panel in wandb for each checkpoint
             # TODO: If there're multiple Laplace methods evaluated with the same get_short_name(),
             # they will be logged under the same metric name.
-            wandb_run.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in metrics[full_name].items()})
+            wandb.log({f"{prefix}/{laplace_params.get_short_name()}_{key}": value for key, value in metrics[full_name].items()})
             
-            for key, value in metrics[full_name].items():
-                wandb_run.log( {f"serie_{laplace_params.get_short_name()}/{key}": value, "step": epoch, "epoch": epoch} )
-
-            wandb_run.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in metrics[full_name].items()})
+            # Create a joint panel for all checkpoints
+            wandb.log({f"laplace_{laplace_params.get_short_name()}/{key}": value for key, value in metrics[full_name].items()})
 
     return metrics

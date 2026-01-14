@@ -83,10 +83,10 @@ def log_metrics(
     logged_values.append(values)
 
     # Log each metric individually for graphing
-    metrics_to_log = {f"{log_prefix}{col}": val for col,
-                      val in zip(columns, values)}
-    counter += 1
-    accelerator.log(metrics_to_log, step=counter)  # here
+    # metrics_to_log = {f"{log_prefix}{col}": val for col,
+                    #   val in zip(columns, values)}
+    # counter += 1
+    # accelerator.log(metrics_to_log, step=counter)  # here
 
 
 def get_lr_scheduler(optimizer, num_batches, config):
@@ -132,7 +132,7 @@ def save_best_metric_checkpoint(
     epoch,
     save_path,
     best_checkpoint_prefix,
-    wandb_run=None,
+    wandb=None,
 ):
     """
     Save checkpoint if current metric is the best so far, and remove old checkpoint.
@@ -155,6 +155,7 @@ def save_best_metric_checkpoint(
     def get_checkpoint_name(metric_name, metric_step):
         return f'{best_checkpoint_prefix}{metric_name}-{metric_step}'
     
+    values_to_log = dict()
     for metric_name, metric_info in metrics_to_save.items():
         if metric_name not in map_metrics:
             print(f"Warning: {metric_name} not found in metrics dictionary. Skipping checkpoint saving for this metric.")
@@ -171,11 +172,10 @@ def save_best_metric_checkpoint(
             (metric_info["is_greater_better"] and cur_metric_val > metric_info["best_metric_val"]) or \
             (not metric_info["is_greater_better"] and cur_metric_val < metric_info["best_metric_val"]):
             
-
+            # Keeps updating the best metric value and epoch
             save_prefix = f"{best_checkpoint_prefix}{metric_name}"
-            if wandb_run is not None:
-                wandb_run.log({f"{save_prefix}/value": cur_metric_val})
-                wandb_run.log({f"{save_prefix}/epoch": epoch})
+            values_to_log.update({f"{save_prefix}/value": cur_metric_val,
+                             f"{save_prefix}/epoch": epoch})
                 
             metrics_to_save[metric_name]["best_metric_val"] = cur_metric_val
             previous_epoch = metrics_to_save[metric_name]["saved_epoch"]
@@ -198,7 +198,7 @@ def save_best_metric_checkpoint(
                         os.remove(old_metric_save_path)
                     print(f"Old checkpoint removed successfully")
     
-    return metrics_to_save
+    return metrics_to_save, values_to_log
 
 
 def train_laplace(
@@ -395,18 +395,18 @@ def train_laplace(
                 lr_scheduler.step()
                 learning_rates.append(optimizer.param_groups[0]["lr"])
 
-            if (
-                accelerator.is_main_process
-                and step % config.experiment.gradient_accumulation_steps == 0
-            ):
-                counter += 1
-                accelerator.log(
-                    {
-                        "step": counter,
-                        "epoch": epoch,
-                        "lr": optimizer.param_groups[0]["lr"],
-                    }
-                )
+            # if (
+            #     accelerator.is_main_process
+            #     and step % config.experiment.gradient_accumulation_steps == 0
+            # ):
+            #     counter += 1
+            #     accelerator.log(
+            #         {
+            #             "step": counter,
+            #             "epoch": epoch,
+            #             "lr": optimizer.param_groups[0]["lr"],
+            #         }
+            #     )
 
         collected_total_loss = accelerator.gather_for_metrics(
             total_loss).sum().item()
@@ -468,20 +468,24 @@ def train_laplace(
                 "train_nll": train_nll,
                 "train_ece": train_ece,
                 "epoch": epoch,
+                "lr": optimizer.param_groups[0]["lr"],
             })
 
-            wandb.log({f"map_metrics/{k}": v for k, v in map_metrics.items()})
             
             # Save best metric checkpoint (accuracy)
-            metrics_to_save = save_best_metric_checkpoint(
+            metrics_to_save, values_to_log = save_best_metric_checkpoint(
                 unwrapped_model,
                 metrics_to_save,
                 map_metrics,
                 epoch,
                 save_path,
                 best_checkpoint_prefix=best_checkpoint_prefix,
-                wandb_run=wandb.run
+                wandb=wandb.run
             )
+
+            # Log all relevant metrics to wandb at once
+            values_to_log.update({f"map_metrics/{k}": v for k, v in map_metrics.items()})
+            wandb.log(values_to_log, step=epoch)
             
             if config.method.do_laplace:
                 if epoch in save_checkpoints_at_epochs:
@@ -513,12 +517,12 @@ def train_laplace(
     print("-------------------------END OF MAP TRAINING-------------------------")
 
     if accelerator.is_main_process:
-        counter += 1
-        accelerator.log(
-            {"Epoch Summary": wandb.Table(
-                data=logged_values, columns=columns)},
-            step=counter,
-        )  # here
+        # counter += 1
+        # accelerator.log(
+        #     {"Epoch Summary": wandb.Table(
+        #         data=logged_values, columns=columns)},
+        #     step=counter,
+        # )  # here
 
         train_log = pd.DataFrame(logged_values, columns=columns)
         train_log = train_log.round(2)
@@ -613,7 +617,7 @@ def train_laplace(
                 json_metrics_path=save_path,
                 accelerator=accelerator,
                 causal_lm=causal_lm,
-                wandb_run=wandb.run,
+                wandb=wandb.run,
                 epoch=extract_epoch(checkpoint)
             )
             laplace_metrics_on_checkpoints.update(checkpoint_metrics)
