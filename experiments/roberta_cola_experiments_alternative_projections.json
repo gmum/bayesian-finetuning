@@ -1,7 +1,7 @@
 {
   "id": "$FILE_$DATE_roberta_cola",
   "output_dir": "experiments_cola_alternative_projections",
-  "output_prefix": "exprj",
+  "output_prefix": "eap",
   "grid_search": {
     "SEED": [
       111,
