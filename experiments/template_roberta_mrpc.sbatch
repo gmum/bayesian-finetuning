@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=36
 #SBATCH --gres=gpu:1
 #SBATCH --time=06:00:00
-#SBATCH --account=plgbloraxs-gpu-gh200
+#SBATCH --account=plgittossl-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=32G
 #SBATCH --output=$RAWIDENTIFIER-%j.out
