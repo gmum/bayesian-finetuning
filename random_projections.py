@@ -27,7 +27,17 @@ def haar_orthogonal_q(m: int, n: int, device=None, dtype=None):
     return Q
 
 
-def compress(W: torch.Tensor, rank: int, absorb_R: bool = True, **ignored_kwargs):
+def random(m: int, n: int, device=None, dtype=None):
+    if device is None:
+        device = torch.device("cpu")
+    if dtype is None:
+        dtype = torch.float32
+
+    return torch.randn(m, n, device=device, dtype=dtype)
+
+
+def compress(W: torch.Tensor, rank: int, absorb_R: bool = True, 
+             sample_func=haar_orthogonal_q, **ignored_kwargs):
     """
     Two-sided Haar-orthogonal random projection of W.
 
@@ -51,8 +61,8 @@ def compress(W: torch.Tensor, rank: int, absorb_R: bool = True, **ignored_kwargs
     dtype = W.dtype
 
     # Left and right Haar-orthogonal factors
-    A = haar_orthogonal_q(n, rank, device=device, dtype=dtype)  # n x r
-    B = haar_orthogonal_q(m, rank, device=device, dtype=dtype)  # m x r
+    A = sample_func(n, rank, device=device, dtype=dtype)  # n x r
+    B = sample_func(m, rank, device=device, dtype=dtype)  # m x r
 
     # Inner core
     R = A.transpose(0, 1) @ W @ B  # r x r
@@ -71,6 +81,10 @@ def compress(W: torch.Tensor, rank: int, absorb_R: bool = True, **ignored_kwargs
     )
 
     return A, R, B
+
+
+def compress_random(*args, **kwargs):
+    return compress(*args, sample_func=random, **kwargs)
 
 
 def reconstruct(A, R, B):

@@ -17,6 +17,8 @@ DECOMPOSITION_METHODS: Dict[
     "dct": dct_projections.permute_and_compress,
     "svd": svd_projections.compress,
     "random": random_projections.compress,
+    "rnd0": random_projections.compress_random,
+    "baseline": random_projections.compress_random,
     "rsvd": randomized_svd_projections.compress,
     "finder": range_finder_projections.compress,
     "cca": cca_projections.compress,
