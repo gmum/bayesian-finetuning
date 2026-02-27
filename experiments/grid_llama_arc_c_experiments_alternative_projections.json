@@ -1,0 +1,23 @@
+{
+  "id": "$FILE_$DATE_llama_arcc",
+  "output_dir": "experiments_arcc_alternative_projections",
+  "output_prefix": "eaparcc",
+  "grid_search": {
+    "SEED": [
+      111,
+      1337,
+      3407
+    ],
+    "RECONSTRUCT_TYPE": [
+      "dct",
+      "cca",
+      "random",
+      "svd",
+      "rnd0"
+    ],
+    "LORA_R": [
+      64,
+      32
+    ]
+  }
+}

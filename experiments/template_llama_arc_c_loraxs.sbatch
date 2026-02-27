@@ -1,15 +1,15 @@
 #!/bin/bash -l
-#SBATCH --job-name=laplace
+#SBATCH --job-name=$RAWIDENTIFIER
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
 #SBATCH --gres=gpu:1
-#SBATCH --time=06:00:00
-#SBATCH --account=plgbloraxs-gpu-gh200
+#SBATCH --time=96:00:00
+#SBATCH --account=plgittossl-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=120G
-#SBATCH --output=logs/job-%j.out
-#SBATCH --error=logs/job-%j.err
+#SBATCH --output=logs/$RAWIDENTIFIER-%j.out
+#SBATCH --error=logs/$RAWIDENTIFIER-%j.err
 
 ## Set envs for distributed training
 export RANK=0
@@ -40,7 +40,7 @@ SEED=3407
 
 MODEL="llama_7b_chat"
 
-EPOCHS=10
+EPOCHS=7
 CHECKPOINT_EPOCHS="[4,5,6]"
 
 LEARNING_RATE=1e-3
