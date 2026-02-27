@@ -73,6 +73,11 @@ def run_experiment(config):
         "loraxs" if config.experiment.use_loraxs else "lora",
     ]
 
+    try:
+        active_tags.append(config["reconstruction_type"])
+    except:
+        pass
+
     # Create a descriptive run name
     run_name = f"{model_name}_{task}_{'loraxs' if config.experiment.use_loraxs else 'lora'}_seed{config.experiment.seed}_lr{config.experiment.learning_rate}_cls_lr{config.experiment.cls_learning_rate}_ep{config.experiment.num_epochs}"
 
