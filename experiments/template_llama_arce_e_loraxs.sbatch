@@ -55,7 +55,7 @@ UNFREEZE_A=False
 UNFREEZE_B=False
 
 ADD_LM_HEAD=False
-EXTEND_TARGET_MODULES=False
+EXTEND_TARGET_MODULES=False  # applicable only for -S modules (for unfrozen A and B)
 
 RECONSTRUCT_CONFIG="reconstruct_config.yaml"
 

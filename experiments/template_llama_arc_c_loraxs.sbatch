@@ -40,7 +40,7 @@ SEED=3407
 
 MODEL="llama_7b_chat"
 
-EPOCHS=7
+EPOCHS=10
 CHECKPOINT_EPOCHS="[4,5,6]"
 
 LEARNING_RATE=1e-3
@@ -55,7 +55,7 @@ UNFREEZE_A=False
 UNFREEZE_B=False
 
 ADD_LM_HEAD=False
-EXTEND_TARGET_MODULES=False
+EXTEND_TARGET_MODULES=False  # applicable only for -S modules (for unfrozen A and B)
 
 RECONSTRUCT_CONFIG="reconstruct_config.yaml"
 
