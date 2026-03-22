@@ -1,9 +1,10 @@
 {
-  "id": "$FILE_$DATE_llama_arcc",
-  "output_dir": "experiments_arcc_alternative_projections",
-  "output_prefix": "eaparcc",
+  "id": "$FILE_$DATE_llama_obqa",
+  "output_dir": "experiments_obqa_alternative_projections",
+  "output_prefix": "eapobqa",
   "grid_search": {
     "SEED": [
+      111,
       1337,
       3407
     ],

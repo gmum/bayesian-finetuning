@@ -38,6 +38,8 @@ def run_experiment(config):
     # )  # mixed_precision='fp16')
 
     print("------------------------------------START-------------------------")
+    n_gpus = torch.cuda.device_count()
+    print(f"[run_experiment] Number of GPUs available: {n_gpus}")
     print(f"[run_experiment] config = {config}")
 
     accelerator = Accelerator(

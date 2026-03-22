@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
 #SBATCH --gres=gpu:1
-#SBATCH --time=96:00:00
+#SBATCH --time=48:00:00
 #SBATCH --account=plgittossl-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=120G
@@ -40,7 +40,7 @@ SEED=3407
 
 MODEL="llama_7b_chat"
 
-EPOCHS=7
+EPOCHS=6
 CHECKPOINT_EPOCHS="[4,5,6]"
 
 LEARNING_RATE=1e-3

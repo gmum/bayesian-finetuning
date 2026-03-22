@@ -364,6 +364,10 @@ def train_laplace(
         for step, batch in enumerate(
             tqdm(train_dataloader, disable=not accelerator.is_main_process)
         ):
+            import gc
+            gc.collect()
+            torch.cuda.empty_cache()
+
             with accelerator.accumulate(model):
                 output = model(
                     **{
