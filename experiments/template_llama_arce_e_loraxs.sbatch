@@ -1,15 +1,15 @@
 #!/bin/bash -l
-#SBATCH --job-name=$RAWIDENTIFIER
+#SBATCH --job-name=laplace
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=36
 #SBATCH --gres=gpu:1
-#SBATCH --time=48:00:00
-#SBATCH --account=plgittossl-gpu-gh200
+#SBATCH --time=06:00:00
+#SBATCH --account=plgbloraxs-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=120G
-#SBATCH --output=logs/$RAWIDENTIFIER-%j.out
-#SBATCH --error=logs/$RAWIDENTIFIER-%j.err
+#SBATCH --output=logs/job-%j.out
+#SBATCH --error=logs/job-%j.err
 
 ## Set envs for distributed training
 export RANK=0
@@ -32,10 +32,10 @@ source $WORKSPACE_DIR.env/bin/activate
 
 
 # CONFIGURATION PARAMETERS:
-IDENTIFIER="experiment_llama7b_obqa_loraxs_3407"
+IDENTIFIER="experiment_robertalarge_cola_svd_3407"
 
 LORA_R=64
-TASK="obqa"
+TASK="arc-e"
 SEED=3407
 
 MODEL="llama_7b_chat"
@@ -43,8 +43,8 @@ MODEL="llama_7b_chat"
 EPOCHS=10
 CHECKPOINT_EPOCHS="[4,5,6]"
 
-LEARNING_RATE=1e-3
-CLS_LEARNING_RATE=1e-3
+LEARNING_RATE=5e-4
+CLS_LEARNING_RATE=5e-4
 LORA_DROPOUT=0.0
 LORA_WEIGHT_DECAY=0.1
 CLASSIFIER_WEIGHT_DECAY=0.01
