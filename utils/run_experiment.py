@@ -22,21 +22,11 @@ from data import (
     GLUE_task_to_keys,
 )
 from accelerate import Accelerator
-# from accelerate import DeepSpeedPlugin
 from utils.peft_utils import WrappedModel
 
 
 
 def run_experiment(config):
-    # deepspeed and accelerate initialization
-    # deepspeed_plugin = DeepSpeedPlugin(
-    #     zero_stage=2,
-    #     gradient_accumulation_steps=config.experiment.gradient_accumulation_steps,
-    # )
-    # accelerator = Accelerator(
-    #     split_batches=True, log_with="wandb", deepspeed_plugin=deepspeed_plugin
-    # )  # mixed_precision='fp16')
-
     print("------------------------------------START-------------------------")
     n_gpus = torch.cuda.device_count()
     print(f"[run_experiment] Number of GPUs available: {n_gpus}")
@@ -64,8 +54,6 @@ def run_experiment(config):
                 # LORA-XS case
                 config.model.target_modules.extend(
                     ['k_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'])
-                # # test
-                # config.model.target_modules.extend(['o_proj', 'down_proj'])
         else:
             raise ValueError(f"Model {config.model.model_name} not supported")
 

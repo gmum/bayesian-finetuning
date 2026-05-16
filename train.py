@@ -8,14 +8,11 @@ from tqdm import tqdm
 import tabulate
 import pandas as pd
 import wandb
-from utils.peft_utils import load_peft_model
 import json
 import accelerate
 import torch.nn.functional as F
-from utils.eval_utils import evaluate_task, compute_metrics, ood_metrics_entropy, compute_nll, compute_ece
+from utils.eval_utils import compute_metrics, compute_nll, compute_ece
 import shutil
-
-from utils.peft_utils import get_id_list
 
 from laplace_utils import evaluate_laplace_params, get_laplace_params, checkpoints_to_fit, LaplaceWeights, tensor_metrics_to_float
 from laplace.utils.enums import Likelihood, SubsetOfWeights, HessianStructure, PredType, LinkApprox, TuningMethod, PriorStructure
@@ -81,12 +78,6 @@ def log_metrics(
         [values], columns, tablefmt="simple", floatfmt="8.4f")
     print(table)
     logged_values.append(values)
-
-    # Log each metric individually for graphing
-    # metrics_to_log = {f"{log_prefix}{col}": val for col,
-                    #   val in zip(columns, values)}
-    # counter += 1
-    # accelerator.log(metrics_to_log, step=counter)  # here
 
 
 def get_lr_scheduler(optimizer, num_batches, config):
@@ -399,19 +390,6 @@ def train_laplace(
                 lr_scheduler.step()
                 learning_rates.append(optimizer.param_groups[0]["lr"])
 
-            # if (
-            #     accelerator.is_main_process
-            #     and step % config.experiment.gradient_accumulation_steps == 0
-            # ):
-            #     counter += 1
-            #     accelerator.log(
-            #         {
-            #             "step": counter,
-            #             "epoch": epoch,
-            #             "lr": optimizer.param_groups[0]["lr"],
-            #         }
-            #     )
-
         collected_total_loss = accelerator.gather_for_metrics(
             total_loss).sum().item()
         train_loss = collected_total_loss / (
@@ -521,13 +499,6 @@ def train_laplace(
     print("-------------------------END OF MAP TRAINING-------------------------")
 
     if accelerator.is_main_process:
-        # counter += 1
-        # accelerator.log(
-        #     {"Epoch Summary": wandb.Table(
-        #         data=logged_values, columns=columns)},
-        #     step=counter,
-        # )  # here
-
         train_log = pd.DataFrame(logged_values, columns=columns)
         train_log = train_log.round(2)
 

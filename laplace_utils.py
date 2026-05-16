@@ -18,7 +18,6 @@ from laplace import Laplace
 from laplace.utils.enums import Likelihood, SubsetOfWeights, HessianStructure, PredType, LinkApprox, TuningMethod, PriorStructure
 from laplace.baselaplace import BaseLaplace, KronLaplace, FullLaplace, LowRankLaplace, ParametricLaplace, FunctionalLaplace, DiagLaplace
 from laplace.curvature import *
-from torchmetrics import Accuracy, CalibrationError
 
 import re
 from typing import List
@@ -27,7 +26,7 @@ import wandb
 from utils.eval_utils import compute_nll, compute_ece, get_classification_metrics, compute_metrics
 from loading_utils import load_loraxs_weights
 from utils.peft_utils import WrappedModel
-# from bayesian_lora_utils import evaluate_bayesian_lora
+
 
 def tensor_metrics_to_float(metrics: dict) -> dict:
   # iterate over dict (possibly nested) and convert all torch.Tensor to float
@@ -110,11 +109,6 @@ def set_classifier_requires_grad(model: nn.Module, requires_grad: bool) -> None:
 def set_loraxs_requires_grad(model: nn.Module, requires_grad: bool) -> None:
     for name, param in model.named_parameters():
         if "lora_latent_mapping" in name:
-            param.requires_grad = requires_grad
-            
-def set_loraxs_output_requires_grad(model: nn.Module, requires_grad: bool) -> None:
-    for name, param in model.named_parameters():
-        if "output" in name and "lora_latent_mapping" in name:
             param.requires_grad = requires_grad
 
 def set_classifier_out_proj_requires_grad(model: nn.Module, requires_grad: bool) -> None:
@@ -246,32 +240,20 @@ def evaluate_linearized_prediction(
     if verbose:
       print(f"GPU memory allocated: {torch.cuda.memory_allocated(device=device) / 1024**3:.2f} GB")
       print(f"GPU memory reserved: {torch.cuda.memory_reserved(device=device) / 1024**3:.2f} GB")
-    # total_loss = 0
     total_samples = 0
-    
-    # metric_kwargs = {"task": "multiclass", "num_classes": num_labels}
-    # acc_metric = Accuracy(**metric_kwargs).to(device)
-    # ece_metric = CalibrationError(n_bins=20, **metric_kwargs).to(device)
-    # nll_metric = torch.nn.NLLLoss(reduction="sum")
+
     all_probas = []
     all_labels = []
     with torch.no_grad():
         for batch in tqdm(data_loader):
             labels = batch["labels"].to(device)
             preds = la(batch, pred_type=pred_type, link_approx=link_approx, **prediction_kwargs)
-            
-            probas = preds # For now, we consider only Classification
+
+            probas = preds  # For now, we consider only Classification
             all_probas.append(probas)
             all_labels.append(labels)
-            # acc_metric.update(probas, labels)
-            # total_loss += nll_metric(torch.log(probas), labels).item()
-            # ece_metric.update(probas, labels)
             total_samples += len(labels)
 
-    # acc = acc_metric.compute().item()
-    # total_loss /= total_samples
-    # ece = ece_metric.compute().item()
-    
     all_probas = torch.cat(all_probas)
     all_labels = torch.cat(all_labels)
     

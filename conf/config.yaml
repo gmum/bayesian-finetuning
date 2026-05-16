@@ -29,11 +29,9 @@ experiment:
   num_epochs: 15
   set_fraction: 1.0 # fraction of training dataset used for learning (value between 0 and 1, inclusively)
   save_checkpoints_at_epochs: [4, 5, 6] # epochs at which to save checkpoints during training
-  weight_decay: 0
   scheduler: "linear"
   warmup_length: 0.06
   num_lr_cycles: 0.5
-  eval_upon_save: False
 
   # wandb parameters
   wandb_entity: "loquacious"
@@ -71,10 +69,6 @@ experiment:
 
 evaluation:
   seed: 10
-  eval_method: "laplace" # 'laplace' | 'dropout'
-  eval_model_path: "NONE" # set to the model path to use in evaluation
-  num_samples: 1 # number of samples (e.g. for dropout/SWAG)
-  only_ood: False # only run OOD eval (skip ID eval)
 
 hydra:
   run:

@@ -26,26 +26,8 @@ def set_save_path(config, accelerator):
             ]
         )
 
-        if config.method.method_name == "wgd":
-            exp_name += "^nparticles_" + str(config.method.n_particles)
-
-        elif config.method.method_name == "ensemble":
-            exp_name += "^nparticles_" + str(config.method.n_particles)
-
-        elif config.method.method_name == "f-wgd":
-            exp_name += "^nparticles_" + str(config.method.n_particles)
-
-        elif config.method.method_name == "laplace":
-            # exp_name += "^" + "^".join(
-            #     [
-            #         "hess_" + str(config.method.hessian_structure),
-            #         "laplace_" + str(config.method.do_laplace),
-            #     ]
-            # )
-            exp_name += ""
-        else:
-            raise Exception(
-                "only laplace, wgd, f-wgd and ensemble methods supported")
+        if config.method.method_name != "laplace":
+            raise Exception("only laplace method is supported")
 
     # Generate a timestamp
     timestamp = "_to_be_replaced"

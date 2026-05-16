@@ -1,4 +1,0 @@
-model_name: "distilbert-base-uncased"
-target_modules: ["q_lin", "v_lin"]
-modules_to_save: ['classifier']
-

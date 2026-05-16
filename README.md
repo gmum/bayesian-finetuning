@@ -3,6 +3,17 @@
 Our repository is based on
 [https://github.com/gmum/b-lora-xs](https://github.com/gmum/b-lora-xs)
 
+## Scope
+
+This repository implements the journal extension's novel contributions: the Laplace
+Approximation (L-LoRA-XS and L-LoRA-S variants, with KRON or DIAG covariance) and
+the four projection strategies (SVD, Whitened SVD / W-SVD, DCT, RAND) plus their
+hybrids, evaluated on `roberta-large` (GLUE) and `meta-llama/Llama-2-7b-chat-hf`
+(commonsense MCQA). The previously-published SWAG variant (B-LoRA-XS, EMNLP 2025)
+is intentionally **not** implemented here; to reproduce the B-LoRA-XS / LoRA-SWAG
+numbers please use the original release at
+[gmum/b-lora-xs](https://github.com/gmum/b-lora-xs).
+
 ## Setup
 Prepare a work enivornment using [prepare_env.sh](prepare_env.sh) and [requirements.txt](requirements.txt).
 Set your workspace directory using `export WORKSPACE_DIR=path`.
@@ -39,9 +50,27 @@ The main logic for replacing LoRA modules is implemented in [loraxs.py](loraxs.p
 
 LLAMA experiments were executed using [submit_grid.sh](submit_grid.sh) which relies on [run_job.sh](run_job.sh).
 
+Supported flows:
+
+- `roberta-large` + Laplace on GLUE (`cola`, `mrpc`, `rte`, `sst2`) — templates in
+  `experiments/template_roberta_*.sbatch`.
+- `meta-llama/Llama-2-7b-chat-hf` + Laplace on commonsense MCQA (`arc-c`, `arc-e`,
+  `obqa`) — templates in `experiments/template_llama_*.sbatch` and
+  `run_job.sh` / `submit_grid.sh`.
+- Laplace under alternative projections / reconstruction types — SVD, Whitened SVD
+  (W-SVD; implemented in [cca_projections.py](cca_projections.py)), DCT, RAND, plus
+  hybrids like `dct-1/2_svd` — via `+reconstruct_config=...` and
+  `+reconstruction_type=...` (see [conf/reconstruct_config.yaml](conf/reconstruct_config.yaml),
+  [conf/reconstruct_config_halfdct.yaml](conf/reconstruct_config_halfdct.yaml)).
+- L-LoRA-S variant (Laplace with `A`, `B` also fine-tuned during MAP) via
+  `experiment.unfreeze_A=True experiment.unfreeze_B=True experiment.extend_target_modules=True`.
+- For SWAG (B-LoRA-XS / LoRA-SWAG) runs see
+  [gmum/b-lora-xs](https://github.com/gmum/b-lora-xs) — the code release for the
+  prior EMNLP 2025 publication.
+
 
 ## License
-Copyright (C) 2025 Patryk Marszałek, Klaudia Bałazy, Jacek Tabor, Tomasz Kuśmierczyk
+Copyright (C) 2026 Viktar Dubovik, Patryk Marszałek, Jacek Tabor, Tomasz Kuśmierczyk
 
 This project is distributed under the terms of the [GNU Affero General Public License v3](licenses/LICENSE). 
 Portions of the code derived from MIT-licensed sources remain compatible under both the MIT license and AGPL v3. 
