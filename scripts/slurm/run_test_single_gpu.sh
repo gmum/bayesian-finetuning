@@ -12,6 +12,20 @@
 #SBATCH --error=test1gpu-%j.err
 
 
+# Run from the repository root so cwd-relative paths in launch_exp_hydra.py
+# and utils/run_experiment.py (which opens `conf/...`) resolve correctly.
+# Submit from the repo root, for example:
+#   sbatch scripts/slurm/run_test_single_gpu.sh
+# or pass an explicit working directory:
+#   sbatch --chdir=/path/to/bay_loraxs scripts/slurm/run_test_single_gpu.sh
+REPO_ROOT="${REPO_ROOT:-$PWD}"
+if [ ! -f "$REPO_ROOT/launch_exp_hydra.py" ]; then
+  echo "ERROR: launch_exp_hydra.py not found in REPO_ROOT=$REPO_ROOT" >&2
+  echo "Submit this job from the repo root or pass --chdir=/path/to/bay_loraxs." >&2
+  exit 1
+fi
+cd "$REPO_ROOT"
+
 # WORKSPACE_DIR is set and not empty, ensure it ends with /
 if [ -n "${WORKSPACE_DIR}" ]; then
   [[ "${WORKSPACE_DIR}" != */ ]] && WORKSPACE_DIR="${WORKSPACE_DIR}/"

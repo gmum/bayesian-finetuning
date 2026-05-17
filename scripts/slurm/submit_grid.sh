@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Resolve repository root from this script's location so the grid can be
+# submitted from any directory. The sbatch job (run_job.sh) is anchored
+# in $SCRIPT_DIR and starts with REPO_ROOT as its working directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Arrays of values to sweep
 tasks=("arc-c" "arc-e" "obqa") # cola
 learning_rates=(5e-4) # (1e-3, 8e-4)
@@ -51,7 +57,7 @@ for task in "${tasks[@]}"; do
                   for unfreeze_A in "${unfreeze_A[@]}"; do
                     for unfreeze_B in "${unfreeze_B[@]}"; do
                     echo "Submitting: TASK=$task, LORA_R=$lora_r, LORA_ALPHA=$lora_alpha, SEED=$seed, LEARNING_RATE=$learning_rate, CLS_LEARNING_RATE=$cls_learning_rate, LORA_DROPOUT=$lora_dropout, LORA_WEIGHT_DECAY=$lora_weight_decay, CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay, EPOCHS=$epoch, UNFREEZE_A=$unfreeze_A, UNFREEZE_B=$unfreeze_B, ADD_LM_HEAD=$ADD_LM_HEAD, EXTEND_TARGET_MODULES=$EXTEND_TARGET_MODULES"
-                    sbatch --export=TASK=$task,LORA_R=$lora_r,LORA_ALPHA=$lora_alpha,SEED=$seed,LEARNING_RATE=$learning_rate,CLS_LEARNING_RATE=$cls_learning_rate,LORA_DROPOUT=$lora_dropout,LORA_WEIGHT_DECAY=$lora_weight_decay,CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay,DO_LAPLACE=$DO_LAPLACE,EPOCHS=$epoch,UNFREEZE_A=$unfreeze_A,UNFREEZE_B=$unfreeze_B,ADD_LM_HEAD=$ADD_LM_HEAD,EXTEND_TARGET_MODULES=$EXTEND_TARGET_MODULES run_job.sh
+                    sbatch --chdir="$REPO_ROOT" --export=ALL,TASK=$task,LORA_R=$lora_r,LORA_ALPHA=$lora_alpha,SEED=$seed,LEARNING_RATE=$learning_rate,CLS_LEARNING_RATE=$cls_learning_rate,LORA_DROPOUT=$lora_dropout,LORA_WEIGHT_DECAY=$lora_weight_decay,CLASSIFIER_WEIGHT_DECAY=$classifier_weight_decay,DO_LAPLACE=$DO_LAPLACE,EPOCHS=$epoch,UNFREEZE_A=$unfreeze_A,UNFREEZE_B=$unfreeze_B,ADD_LM_HEAD=$ADD_LM_HEAD,EXTEND_TARGET_MODULES=$EXTEND_TARGET_MODULES "$SCRIPT_DIR/run_job.sh"
                     done
                   done
                 done

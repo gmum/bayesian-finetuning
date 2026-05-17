@@ -11,6 +11,21 @@
 #SBATCH --output=final_logs/job-%j.out
 #SBATCH --error=final_logs/job-%j.err
 
+# Run from the repository root so cwd-relative paths in launch_exp_hydra.py
+# and utils/run_experiment.py (which opens `conf/...`) resolve correctly.
+# Submit from the repo root, for example:
+#   sbatch scripts/slurm/run_job.sh
+# or pass an explicit working directory:
+#   sbatch --chdir=/path/to/bay_loraxs scripts/slurm/run_job.sh
+REPO_ROOT="${REPO_ROOT:-$PWD}"
+if [ ! -f "$REPO_ROOT/launch_exp_hydra.py" ]; then
+  echo "ERROR: launch_exp_hydra.py not found in REPO_ROOT=$REPO_ROOT" >&2
+  echo "Submit this job from the repo root or pass --chdir=/path/to/bay_loraxs." >&2
+  exit 1
+fi
+cd "$REPO_ROOT"
+mkdir -p final_logs
+
 # Set envs for distributed training
 export RANK=0
 export LOCAL_RANK=0
