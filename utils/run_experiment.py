@@ -196,7 +196,7 @@ def run_experiment(config):
             if torch.cuda.device_count() > 0:
                 pretrained_model = pretrained_model.to("cuda")
 
-            import cca_projections
+            import projections.cca_projections as cca_projections
             cca_projections.precompute_covariances(
                 pretrained_model=pretrained_model,
                 target_modules=config.model.target_modules,

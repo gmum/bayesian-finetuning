@@ -84,7 +84,7 @@ Supported flows:
 `obqa`) — templates in `experiments/template_llama_*.sbatch` and
 `scripts/slurm/run_job.sh` / `scripts/slurm/submit_grid.sh`.
 - Laplace under alternative projections / reconstruction types — SVD, Whitened SVD
-(W-SVD; implemented in [cca_projections.py](cca_projections.py)), DCT, RAND, plus
+(W-SVD; implemented in [projections/cca_projections.py](projections/cca_projections.py)), DCT, RAND, plus
 hybrids like `dct-1/2_svd` — via `+reconstruct_config=...` and
 `+reconstruction_type=...` (see [conf/reconstruct_config.yaml](conf/reconstruct_config.yaml),
 [conf/reconstruct_config_halfdct.yaml](conf/reconstruct_config_halfdct.yaml)).

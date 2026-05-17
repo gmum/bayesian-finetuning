@@ -138,7 +138,7 @@ def get_replacement_module(weight, module_name, reconstruction_type, writer, rec
         final_dec = torch.tensor(dec, dtype=weight.dtype, device=weight.device)
 
     else:
-        import hybrid_projections
+        import projections.hybrid_projections as hybrid_projections
         final_enc, reduced_matrix, final_dec = hybrid_projections.compress(
             weight, specification=reconstruction_type, module_name=module_name, **cfg
         )

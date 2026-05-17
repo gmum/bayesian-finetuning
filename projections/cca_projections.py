@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from covariance_computation import CovarianceAccumulator
+from .covariance_computation import CovarianceAccumulator
 
 import sys
 from tqdm import tqdm

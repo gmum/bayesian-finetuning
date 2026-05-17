@@ -2,12 +2,12 @@ import torch
 import math
 from typing import Tuple, Dict, Callable
 
-import svd_projections
-import random_projections
-import dct_projections
-import randomized_svd_projections
-import range_finder_projections
-import cca_projections
+from . import svd_projections
+from . import random_projections
+from . import dct_projections
+from . import randomized_svd_projections
+from . import range_finder_projections
+from . import cca_projections
 
 
 # Map the string name to the corresponding function
